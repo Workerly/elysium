@@ -1,5 +1,6 @@
-import { Elysia } from 'elysia';
+import type { EventData } from './core/event';
 
+import { Event, on } from './core/event';
 import { get, inject, service } from './core/service';
 import { Scope } from './core/utils';
 
@@ -20,6 +21,13 @@ class UserService {
 
 	public say(sth: string) {
 		this.logger.log(sth);
+	}
+
+	@on({ event: 'user:say' })
+	private static sayFromEvent(e: EventData<string>) {
+		const logger = get(LoggerService)!;
+		logger.log(`from source: ${e.source} with event: ${e.data}`);
+		throw new Error('Custom error');
 	}
 }
 
@@ -51,6 +59,12 @@ if (l === null) {
 } else {
 	l.log('hello Elysium, from logger service!');
 }
+
+Event.on('elysium:error', (e: EventData<Error>) => {
+	console.error('Fuck', e.data.message);
+});
+
+Event.emit<string>('user:say', 'wowowow!!', c);
 
 console.log(l === s.logger);
 console.log(s === c.userService);
