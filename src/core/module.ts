@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import { Class } from 'type-fest';
+import type { Class } from 'type-fest';
 
 import { Symbols } from './utils';
 

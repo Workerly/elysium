@@ -1,3 +1,5 @@
+import type { Elysia } from 'elysia';
+
 export type Route = `/${string}`;
 
 export namespace Symbols {
@@ -18,6 +20,10 @@ export namespace Symbols {
 	export const macros = Symbol('macros');
 
 	export const macro = Symbol('macro');
+
+	export const websocket = Symbol('websocket');
+
+	export const elysiaPlugin = Symbol('elysia:plugin');
 }
 
 export const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
@@ -26,3 +32,5 @@ export enum Scope {
 	SINGLETON,
 	FACTORY
 }
+
+export type ElysiaPlugin = () => Promise<Elysia>;

@@ -1,8 +1,12 @@
 import type { EventData } from './core/event';
+import type { WS } from './core/websocket';
+
+import { Elysia, t } from 'elysia';
 
 import { Event, on } from './core/event';
 import { get, inject, service } from './core/service';
-import { Scope } from './core/utils';
+import { ElysiaPlugin, Scope, Symbols } from './core/utils';
+import { onClose, onMessage, onOpen, websocket } from './core/websocket';
 
 @service({ scope: Scope.FACTORY })
 class LoggerService {
@@ -34,6 +38,33 @@ class UserService {
 @service()
 class UserController {
 	public constructor(@inject('user.service') public userService: UserService) {}
+}
+
+const MessageData = t.Object({
+	message: t.String()
+});
+
+type MessageData = typeof MessageData.static;
+
+@websocket({ path: '/ws', options: { idleTimeout: 10 } })
+class MessagingServer {
+	public constructor(@inject() public logger: LoggerService) {}
+
+	@onOpen()
+	private onOpen() {
+		this.logger.log('websocket opened');
+	}
+
+	@onClose()
+	private onClose() {
+		this.logger.log('websocket closed');
+	}
+
+	@onMessage(MessageData)
+	private onMessage(ws: WS, data: MessageData) {
+		this.logger.log(`received message: ${data.message} from ${ws.data.id}`);
+		ws.send(JSON.stringify({ message: `Echo: ${data.message}` }));
+	}
 }
 
 const c = get(UserController);
@@ -68,3 +99,15 @@ Event.emit<string>('user:say', 'wowowow!!', c);
 
 console.log(l === s.logger);
 console.log(s === c.userService);
+
+const ws: ElysiaPlugin = Reflect.getMetadata(Symbols.elysiaPlugin, MessagingServer);
+if (ws === undefined) {
+	console.error('No websocket route found!');
+	process.exit(1);
+}
+
+const app = new Elysia()
+	.use(ws())
+	.onRequest(({ request }) => console.log(request.url))
+	.get('/', 'Hello test')
+	.listen(3000);
