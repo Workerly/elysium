@@ -5,7 +5,7 @@ import type { WampRegistrationHandlerArgs } from './core/wamp';
 import type { WS, WSError } from './core/websocket';
 
 import { Context, Elysia, t } from 'elysia';
-import { uid } from 'radash';
+import { iterate, list, uid } from 'radash';
 import Wampy from 'wampy';
 
 import { Event, on } from './core/event';
@@ -13,6 +13,7 @@ import {
 	body,
 	context,
 	decorate,
+	get,
 	get as getHttp,
 	http,
 	HttpControllerScope,
@@ -118,6 +119,14 @@ class UserController {
 	@post()
 	private post(@body(MessageData) b: MessageData, @query() q: any, @co() c: UserController) {
 		return { b, q, c };
+	}
+
+	@get()
+	private async *get(@query() q: any, @context() c: any) {
+		for (const each of list(15)) {
+			yield each;
+			await Bun.sleep(1000);
+		}
 	}
 }
 

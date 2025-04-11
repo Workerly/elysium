@@ -1,4 +1,4 @@
-import type { Context, Handler, HTTPMethod, SingletonBase, TSchema } from 'elysia';
+import type { AnyElysia, Context, Handler, HTTPMethod, SingletonBase, TSchema } from 'elysia';
 import type { Class } from 'type-fest';
 import type { Route } from './utils';
 
@@ -151,14 +151,14 @@ export type HttpProps = {
  */
 export const http = (props: HttpProps) => {
 	return function (target: Class<any>) {
-		async function handleHttp(): Promise<Elysia> {
+		async function handleHttp(): Promise<AnyElysia> {
 			// TODO: Use the logger service here
 			console.log(`Registering HTTP route for ${props.path} using ${target.name}`);
 			await nextTick();
 
-			const app = new Elysia();
-
 			props = assign({ path: '/', scope: HttpControllerScope.SERVER, tags: [] }, props);
+
+			const app = new Elysia({ prefix: props.path });
 
 			if (props.scope === HttpControllerScope.SERVER) {
 				app.decorate('controller', Service.make(target));
@@ -172,79 +172,75 @@ export const http = (props: HttpProps) => {
 				Reflect.getMetadata(Symbols.http, target) ?? [];
 
 			// TODO: Add middlewares here
-			app.group(props.path, function (app) {
-				for (const route of metadata) {
-					const getParameters = async (c: Context) => {
-						const parameters: any[] = [];
+			for (const route of metadata) {
+				const getParameters = async (c: Context) => {
+					const parameters: any[] = [];
 
-						if (route.rawContext) {
-							parameters[route.rawContext.index] = c;
+					if (route.rawContext) {
+						parameters[route.rawContext.index] = c;
+					}
+
+					if (route.body) {
+						parameters[route.body.index] = c.body;
+					}
+
+					if (route.query) {
+						parameters[route.query.index] = c.query;
+					}
+
+					if (!isEmpty(route.params)) {
+						for (const param of route.params) {
+							parameters[param.index] = c.params[param.slug];
 						}
+					}
 
-						if (route.body) {
-							parameters[route.body.index] = c.body;
+					if (!isEmpty(route.customDecorators)) {
+						for (const customDecorator of route.customDecorators) {
+							parameters[customDecorator.index] = await customDecorator.handler(c);
 						}
+					}
 
-						if (route.query) {
-							parameters[route.query.index] = c.query;
-						}
+					return parameters;
+				};
 
-						if (route.params) {
-							for (const param of route.params) {
-								parameters[param.index] = c.params[param.slug];
-							}
-						}
+				const isGenerator = route.handler.constructor.name.includes('GeneratorFunction');
 
-						if (route.customDecorators) {
-							for (const customDecorator of route.customDecorators) {
-								parameters[customDecorator.index] = await customDecorator.handler(c);
-							}
-						}
-
-						return parameters;
-					};
-
-					const isGenerator = route.handler.constructor.name.includes('GeneratorFunction');
-
-					const getHandler = () => {
-						if (isGenerator) {
-							return async function* (c: ContextWithController) {
-								const controller = c.controller;
-								const handler = route.handler.bind(controller);
-
-								try {
-									for await (const eachValue of handler(...(await getParameters(c))) as any[])
-										yield eachValue;
-								} catch (error: any) {
-									yield error;
-								}
-							};
-						}
-
-						return async function (c: ContextWithController) {
+				const getHandler = () => {
+					if (isGenerator) {
+						return async function* (c: ContextWithController) {
 							const controller = c.controller;
 							const handler = route.handler.bind(controller);
-							return handler(...(await getParameters(c)));
+
+							try {
+								for await (const eachValue of handler(...(await getParameters(c))) as any[])
+									yield eachValue;
+							} catch (error: any) {
+								yield error;
+							}
 						};
+					}
+
+					return async function (c: ContextWithController) {
+						const controller = c.controller;
+						const handler = route.handler.bind(controller);
+						return handler(...(await getParameters(c)));
 					};
+				};
 
-					const params = objectify(
-						route.params ?? [],
-						(p) => p.slug,
-						(p) => p.schema
-					);
+				const params = objectify(
+					route.params ?? [],
+					(p) => p.slug,
+					(p) => p.schema
+				);
 
-					app.route(route.method, `/${trim(route.path, '/')}`, getHandler(), {
-						// @ts-ignore
-						config: {},
-						tags: props.tags,
-						body: route.body?.schema,
-						params: isEmpty(params) ? undefined : t.Object(params)
-					});
-				}
-
-				return app;
-			});
+				app.route(route.method, `/${trim(route.path, '/')}`, getHandler(), {
+					// @ts-ignore
+					config: {},
+					tags: props.tags,
+					body: route.body?.schema,
+					params: isEmpty(params) ? undefined : t.Object(params)
+				});
+			}
 
 			return app;
 		}
