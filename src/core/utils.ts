@@ -25,14 +25,11 @@ export namespace Symbols {
 
 	export const wamp = Symbol('wamp');
 
+	export const http = Symbol('http');
+
 	export const elysiaPlugin = Symbol('elysia:plugin');
 }
 
 export const nextTick = () => new Promise((resolve) => process.nextTick(resolve));
-
-export enum Scope {
-	SINGLETON,
-	FACTORY
-}
 
 export type ElysiaPlugin = () => Promise<Elysia>;
