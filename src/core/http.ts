@@ -158,12 +158,12 @@ export const http = (props: HttpProps) => {
 
 			props = assign({ path: '/', scope: HttpControllerScope.SERVER, tags: [] }, props);
 
-			const app = new Elysia({ prefix: props.path });
+			const app = new Elysia({ prefix: props.path, name: target.name });
 
 			if (props.scope === HttpControllerScope.SERVER) {
 				app.decorate('controller', Service.make(target));
 			} else if (props.scope === HttpControllerScope.REQUEST) {
-				app.resolve(() => ({
+				app.resolve({ as: 'scoped' }, () => ({
 					controller: Service.make(target)
 				}));
 			}

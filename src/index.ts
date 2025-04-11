@@ -4,10 +4,10 @@ import type { EventData } from './core/event';
 import type { WampRegistrationHandlerArgs } from './core/wamp';
 import type { WS, WSError } from './core/websocket';
 
-import { Context, Elysia, t } from 'elysia';
-import { iterate, list, uid } from 'radash';
-import Wampy from 'wampy';
+import { Context, t } from 'elysia';
+import { list, uid } from 'radash';
 
+import { app, Application } from './core/app';
 import { Event, on } from './core/event';
 import {
 	body,
@@ -21,8 +21,8 @@ import {
 	post,
 	query
 } from './core/http';
+import { module, Module } from './core/module';
 import { inject, Service, service, ServiceScope } from './core/service';
-import { ElysiaPlugin, Symbols } from './core/utils';
 import {
 	onClose as onCloseWamp,
 	onError,
@@ -34,32 +34,6 @@ import {
 	wamp
 } from './core/wamp';
 import { onClose, onError as onErrorWS, onMessage, onOpen, websocket } from './core/websocket';
-
-class WampWebsocket extends WebSocket {
-	public constructor(url: string, protocols?: string | string[]) {
-		super(url, protocols);
-	}
-
-	public get protocol(): string {
-		return 'wamp.2.json';
-	}
-}
-
-const w = new Wampy('ws://127.0.0.1:8888', {
-	ws: WampWebsocket,
-	realm: 'realm1',
-	autoReconnect: true,
-	maxRetries: 10,
-	retryInterval: 1000
-});
-
-w.connect()
-	.then(() => {
-		console.log('connected');
-	})
-	.catch((err) => {
-		console.error('error connecting', err);
-	});
 
 @service({ scope: ServiceScope.FACTORY })
 class LoggerService {
@@ -213,59 +187,28 @@ class WampController2 {
 	}
 }
 
-const s = Service.get<UserService>('user.service');
-if (s === null) {
-	console.error(`${UserService.name} not found!`);
-	process.exit(1);
-} else {
-	s.say('hello Elysium, from user service!');
+@module({ controllers: [UserController, MessagingServer] })
+class MainModule extends Module {
+	public constructor() {
+		super();
+	}
+
+	public afterRegister() {
+		console.log('Module registered successfully');
+	}
 }
 
-const l = Service.get(LoggerService);
-if (l === null) {
-	console.log(`${LoggerService.name} not found!`);
-	process.exit(1);
-} else {
-	l.log('hello Elysium, from logger service!');
+@app({ modules: [MainModule] })
+class App extends Application {
+	public constructor() {
+		super({
+			name: App.name
+		});
+	}
 }
 
 Event.on('elysium:error', (e: EventData<Error>) => {
 	console.error('Fuck', e.data.message);
 });
 
-console.log(l === s.logger);
-
-const ws: ElysiaPlugin = Reflect.getMetadata(Symbols.elysiaPlugin, MessagingServer);
-if (ws === undefined) {
-	console.error('No websocket route found!');
-	process.exit(1);
-}
-
-const h: ElysiaPlugin = Reflect.getMetadata(Symbols.elysiaPlugin, UserController);
-if (h === undefined) {
-	console.error('No http route found!');
-	process.exit(1);
-}
-
-const app = new Elysia()
-	.use(ws())
-	.use(h())
-	.onRequest(({ request }) => console.log(request.url))
-	.get('/', async function () {
-		const values: any[] = [];
-		await w.call(
-			'test.topic.ext',
-			{
-				argsList: [1, 2, 3],
-				argsDict: { hello: 'world' }
-			},
-			{
-				progress_callback(data) {
-					values.push(data.argsList[0]);
-				}
-			}
-		);
-
-		return values;
-	})
-	.listen(3000);
+await new App().start();

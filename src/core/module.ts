@@ -1,6 +1,10 @@
 import type { Class } from 'type-fest';
 
-import { Symbols } from './utils';
+import Elysia, { AnyElysia } from 'elysia';
+import { assign } from 'radash';
+
+import { Service } from './service';
+import { nextTick, Symbols } from './utils';
 
 /**
  * Properties required when declaring a module using the `@module()` decorator.
@@ -23,11 +27,6 @@ export type ModuleProps = {
 	 * on the endpoint's method handler instead.
 	 */
 	middlewares?: Class<any>[];
-
-	/**
-	 * The list of services available in the module for dependency injection
-	 */
-	services?: Class<any>[];
 };
 
 /**
@@ -35,10 +34,53 @@ export type ModuleProps = {
  * @author Axel Nana <axel.nana@workbud.com>
  * @param options The decorator options.
  */
-export const module = (options: ModuleProps): ClassDecorator => {
-	return function (target) {
-		Reflect.defineMetadata(Symbols.controllers, options.controllers ?? [], target);
-		Reflect.defineMetadata(Symbols.middlewares, options.middlewares ?? [], target);
-		Reflect.defineMetadata(Symbols.services, options.services ?? [], target);
+export const module = (options: ModuleProps) => {
+	return function (target: Class<Module>) {
+		async function handleModule(m: Module): Promise<AnyElysia> {
+			// TODO: Use the logger service here
+			console.log(`Registering module ${target.name}`);
+			await nextTick();
+
+			const props = assign({ controllers: [], middlewares: [] }, options) as Required<ModuleProps>;
+
+			const plugin: AnyElysia = new Elysia({ name: target.name });
+			plugin.decorate('module', m);
+
+			for (const controller of props.controllers) {
+				const app = Reflect.getMetadata(Symbols.elysiaPlugin, controller);
+				if (app === undefined) {
+					// TODO: Use the logger service here
+					console.error(
+						`Invalid controller class ${controller.name} registered in module ${target.name}. Ensure that you either used the @http(), or @websocket() decorators on the controller.`
+					);
+					process.exit(1);
+				}
+
+				// TODO: Add middlewares here
+				plugin.use(await app());
+			}
+
+			return plugin;
+		}
+
+		Reflect.defineMetadata(Symbols.elysiaPlugin, handleModule, target);
 	};
 };
+
+/**
+ * Base class for all modules.
+ * @author Axel Nana <axel.nana@workbud.com>
+ *
+ * This class provides base features for modules, such as hooks and lifecycle methods.
+ */
+export abstract class Module {
+	/**
+	 * Hooks that are executed before the module is registered.
+	 */
+	public beforeRegister(): void {}
+
+	/**
+	 * Hooks that are executed after the module is registered.
+	 */
+	public afterRegister(): void {}
+}
