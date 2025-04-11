@@ -23,6 +23,8 @@ export namespace Symbols {
 
 	export const websocket = Symbol('websocket');
 
+	export const wamp = Symbol('wamp');
+
 	export const elysiaPlugin = Symbol('elysia:plugin');
 }
 

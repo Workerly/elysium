@@ -8,7 +8,7 @@ import { bind } from './service';
 import { nextTick, Route, Symbols } from './utils';
 
 /**
- * Properties required when declaring a websocket route using the `@websocket()` decorator.
+ * Properties required when declaring a websocket controller using the `@websocket()` decorator.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export type WebsocketProps = {
@@ -92,7 +92,7 @@ export const websocket = (props: WebsocketProps) => {
  */
 export const onOpen = (): MethodDecorator => {
 	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) || {};
+		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 		metadata.open = descriptor.value;
 		Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
 	};
@@ -107,7 +107,7 @@ export const onOpen = (): MethodDecorator => {
  */
 export const onClose = (): MethodDecorator => {
 	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) || {};
+		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 		metadata.close = descriptor.value;
 		Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
 	};
@@ -124,7 +124,7 @@ export const onClose = (): MethodDecorator => {
  */
 export const onMessage = (schema: TSchema): MethodDecorator => {
 	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) || {};
+		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 		metadata.message = descriptor.value;
 		metadata.body = schema;
 		Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
@@ -140,7 +140,7 @@ export const onMessage = (schema: TSchema): MethodDecorator => {
  */
 export const onDrain = (): MethodDecorator => {
 	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) || {};
+		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 		metadata.drain = descriptor.value;
 		Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
 	};
