@@ -1,10 +1,24 @@
-import 'reflect-metadata';
-
 import type { Class } from 'type-fest';
 
 import { isString } from 'radash';
 
-import { Scope, Symbols } from './utils';
+import { Symbols } from './utils';
+
+/**
+ * The scope of a service.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export enum ServiceScope {
+	/**
+	 * A single instance of the service is created and shared everywhere it is injected or retrieved.
+	 */
+	SINGLETON,
+
+	/**
+	 * A new instance of the service is created every time it is injected or retrieved.
+	 */
+	FACTORY
+}
 
 /**
  * A generic service class.
@@ -26,7 +40,7 @@ type ServiceRegistration = {
 	/**
 	 * The service's scope.
 	 */
-	scope: Scope;
+	scope: ServiceScope;
 
 	/**
 	 * A factory function that create the service.
@@ -72,12 +86,12 @@ export type ServiceProps = Partial<{
 	 * Set it to `Scope.SINGLETON` to ensure that only one instance of this service is
 	 * used everywhere it is injected or retrieved.
 	 *
-	 * Set it to `Scope.FACTORY` to ensure that everytime you inject or retrieve this
-	 * service, you have a new instace created.
+	 * Set it to `Scope.FACTORY` to ensure that every time you inject or retrieve this
+	 * service, you have a new instance created.
 	 *
-	 * @see Scope
+	 * @see ServiceScope
 	 */
-	scope: Scope;
+	scope: ServiceScope;
 }>;
 
 /**
@@ -94,7 +108,7 @@ const servicesRegistry = new Map<string, ServiceRegistration>();
 export const service = (options?: ServiceProps) => {
 	return function (target: ServiceClass) {
 		const name = options?.name ?? target.name;
-		const scope = options?.scope ?? Scope.SINGLETON;
+		const scope = options?.scope ?? ServiceScope.SINGLETON;
 
 		if (servicesRegistry.has(name)) {
 			// TODO: Use the logger service here
@@ -102,9 +116,9 @@ export const service = (options?: ServiceProps) => {
 			process.exit(1);
 		}
 
-		const factory = () => make(target);
+		const factory = () => Service.make(target);
 
-		if (scope === Scope.SINGLETON) {
+		if (scope === ServiceScope.SINGLETON) {
 			const service = factory();
 			servicesRegistry.set(name, {
 				scope,
@@ -140,97 +154,100 @@ export const inject = (name?: string): ParameterDecorator => {
 	};
 };
 
-/**
- * Retrieves a registered service's instance.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param service The name of the service, or its class.
- * @returns An instance of the registred service, or `null` if no service with that name/type was registered.
- */
-export const get = <T>(service: string | TypedServiceClass<T>): T | null => {
-	const name = isString(service) ? service : service.name;
+export namespace Service {
+	/**
+	 * Retrieves a registered service's instance.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param service The name of the service, or its class.
+	 * @returns An instance of the registered service, or `null` if no service with that name/type was registered.
+	 */
+	export const get = <T>(service: string | TypedServiceClass<T>): T | null => {
+		const name = isString(service) ? service : service.name;
 
-	if (servicesRegistry.has(name)) {
-		const service = servicesRegistry.get(name)!;
-		return service.factory() as T;
-	}
+		if (servicesRegistry.has(name)) {
+			const service = servicesRegistry.get(name)!;
+			return service.factory() as T;
+		}
 
-	return null;
-};
+		return null;
+	};
 
-/**
- * Instantiates a service with its dependencies.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param service The service class to instantiate.
- */
-export const make = <T>(service: TypedServiceClass<T>): T => {
-	const dependencies: Array<InjectedService> = Reflect.getMetadata(Symbols.services, service) ?? [];
+	/**
+	 * Instantiates a service with its dependencies.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param service The service class to instantiate.
+	 */
+	export const make = <T>(service: TypedServiceClass<T>): T => {
+		const dependencies: Array<InjectedService> =
+			Reflect.getMetadata(Symbols.services, service) ?? [];
 
-	const params: any[] = [];
-	dependencies.forEach((dependency) => {
-		const s = get(dependency.name);
+		const params: any[] = [];
+		dependencies.forEach((dependency) => {
+			const s = get(dependency.name);
 
-		if (s === null) {
+			if (s === null) {
+				// TODO: Use the logger service here
+				console.error(
+					`Cannot inject a service. No service was registered with the name: ${dependency.name}`
+				);
+				process.exit(1);
+			}
+
+			params[dependency.index] = s;
+		});
+
+		return new service(...params);
+	};
+
+	/**
+	 * Binds a service to the container and sets it as a singleton.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param service The service class to bind.
+	 * @param name An optional name for the service. If not set, the name of the service class is used instead.
+	 */
+	export const bind = <T>(service: TypedServiceClass<T>, name?: string): T => {
+		const serviceName = name ?? service.name;
+
+		if (servicesRegistry.has(serviceName)) {
 			// TODO: Use the logger service here
-			console.error(
-				`Cannot inject a service. No service was registered with the name: ${dependency.name}`
-			);
+			console.error(`A service with the name ${serviceName} has already been registered.`);
 			process.exit(1);
 		}
 
-		params[dependency.index] = s;
-	});
+		const s = make(service);
 
-	return new service(...params);
-};
+		servicesRegistry.set(serviceName, {
+			scope: ServiceScope.SINGLETON,
+			factory() {
+				return s;
+			}
+		});
 
-/**
- * Binds a service to the container and sets it as a singleton.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param service The service class to bind.
- * @param name An optional name for the service. If not set, the name of the service class is used instead.
- */
-export const bind = <T>(service: TypedServiceClass<T>, name?: string): T => {
-	const serviceName = name ?? service.name;
+		return s;
+	};
 
-	if (servicesRegistry.has(serviceName)) {
-		// TODO: Use the logger service here
-		console.error(`A service with the name ${serviceName} has already been registered.`);
-		process.exit(1);
-	}
+	/**
+	 * Binds a service to the container and sets it as a factory.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param service The service class to bind.
+	 * @param name An optional name for the service. If not set, the name of the service class is used instead.
+	 */
+	export const factory = <T>(service: TypedServiceClass<T>, name?: string): T => {
+		const serviceName = name ?? service.name;
 
-	const s = make(service);
-
-	servicesRegistry.set(serviceName, {
-		scope: Scope.SINGLETON,
-		factory() {
-			return s;
+		if (servicesRegistry.has(serviceName)) {
+			// TODO: Use the logger service here
+			console.error(`A service with the name ${serviceName} has already been registered.`);
+			process.exit(1);
 		}
-	});
 
-	return s;
-};
+		const factory = () => make(service);
 
-/**
- * Binds a service to the container and sets it as a factory.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param service The service class to bind.
- * @param name An optional name for the service. If not set, the name of the service class is used instead.
- */
-export const factory = <T>(service: TypedServiceClass<T>, name?: string): T => {
-	const serviceName = name ?? service.name;
+		servicesRegistry.set(serviceName, {
+			scope: ServiceScope.FACTORY,
+			factory
+		});
 
-	if (servicesRegistry.has(serviceName)) {
-		// TODO: Use the logger service here
-		console.error(`A service with the name ${serviceName} has already been registered.`);
-		process.exit(1);
-	}
-
-	const factory = () => make(service);
-
-	servicesRegistry.set(serviceName, {
-		scope: Scope.FACTORY,
-		factory
-	});
-
-	return factory();
-};
+		return factory();
+	};
+}

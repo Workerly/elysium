@@ -6,7 +6,7 @@ import { omit } from 'radash';
 import Wampy from 'wampy';
 
 import { Event } from './event';
-import { bind } from './service';
+import { Service } from './service';
 import { Symbols } from './utils';
 
 // FIXME: Temporary solution for Bun to properly fill the protocol field. Remove this once oven-sh/bun#18744 is fixed.
@@ -186,7 +186,7 @@ export const wamp = (options: WampProps) => {
 		// TODO: Use the logger service here
 		console.log(`Registering Wamp route for ${options.url} using ${target.name}`);
 
-		const controller = bind(target);
+		const controller = Service.make(target);
 
 		const metadata = Reflect.getMetadata(Symbols.wamp, target) ?? {};
 
@@ -195,7 +195,7 @@ export const wamp = (options: WampProps) => {
 			...omit(options, ['url']),
 			onClose: metadata.close?.bind(controller),
 			onError() {
-				metadata.error?.bind(controller)();
+				metadata.error?.call(controller);
 				// TODO: Add more details like controller name and url
 				Event.emit('elysium:error', new Error('Wamp connection error'));
 			},

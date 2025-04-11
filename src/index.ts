@@ -1,13 +1,27 @@
+import 'reflect-metadata';
+
 import type { EventData } from './core/event';
 import type { WampRegistrationHandlerArgs } from './core/wamp';
-import type { WS } from './core/websocket';
+import type { WS, WSError } from './core/websocket';
 
-import { Elysia, t } from 'elysia';
+import { Context, Elysia, t } from 'elysia';
+import { uid } from 'radash';
 import Wampy from 'wampy';
 
 import { Event, on } from './core/event';
-import { get, inject, service } from './core/service';
-import { ElysiaPlugin, Scope, Symbols } from './core/utils';
+import {
+	body,
+	context,
+	decorate,
+	get as getHttp,
+	http,
+	HttpControllerScope,
+	param,
+	post,
+	query
+} from './core/http';
+import { inject, Service, service, ServiceScope } from './core/service';
+import { ElysiaPlugin, Symbols } from './core/utils';
 import {
 	onClose as onCloseWamp,
 	onError,
@@ -18,7 +32,7 @@ import {
 	subscribe,
 	wamp
 } from './core/wamp';
-import { onClose, onMessage, onOpen, websocket } from './core/websocket';
+import { onClose, onError as onErrorWS, onMessage, onOpen, websocket } from './core/websocket';
 
 class WampWebsocket extends WebSocket {
 	public constructor(url: string, protocols?: string | string[]) {
@@ -38,11 +52,15 @@ const w = new Wampy('ws://127.0.0.1:8888', {
 	retryInterval: 1000
 });
 
-w.connect().then(() => {
-	console.log('connected');
-});
+w.connect()
+	.then(() => {
+		console.log('connected');
+	})
+	.catch((err) => {
+		console.error('error connecting', err);
+	});
 
-@service({ scope: Scope.FACTORY })
+@service({ scope: ServiceScope.FACTORY })
 class LoggerService {
 	public log(msg: string) {
 		console.log(msg);
@@ -61,17 +79,16 @@ class UserService {
 		this.logger.log(sth);
 	}
 
+	getUser(id: string) {
+		return { id, name: `User ${id}` };
+	}
+
 	@on({ event: 'user:say' })
 	private static sayFromEvent(e: EventData<string>) {
-		const logger = get(LoggerService)!;
+		const logger = Service.get(LoggerService)!;
 		logger.log(`from source: ${e.source} with event: ${e.data}`);
 		throw new Error('Custom error');
 	}
-}
-
-@service()
-class UserController {
-	public constructor(@inject('user.service') public userService: UserService) {}
 }
 
 const MessageData = t.Object({
@@ -79,6 +96,30 @@ const MessageData = t.Object({
 });
 
 type MessageData = typeof MessageData.static;
+
+const co = decorate((c: Context) => {
+	// @ts-ignore
+	return c.controller;
+});
+
+@http({ path: '/users', scope: HttpControllerScope.SERVER })
+class UserController {
+	public constructor(
+		@inject('user.service') public userService: UserService,
+		public id: string = uid(8)
+	) {}
+
+	@getHttp('/:id')
+	private getUser(@param('id') id: string, @context() c: any) {
+		console.log(c);
+		return this.userService.getUser(id);
+	}
+
+	@post()
+	private post(@body(MessageData) b: MessageData, @query() q: any, @co() c: UserController) {
+		return { b, q, c };
+	}
+}
 
 @websocket({ path: '/ws', options: { idleTimeout: 10 } })
 class MessagingServer {
@@ -98,6 +139,12 @@ class MessagingServer {
 	private onMessage(ws: WS, data: MessageData) {
 		this.logger.log(`received message: ${data.message} from ${ws.data.id}`);
 		ws.send(JSON.stringify({ message: `Echo: ${data.message}` }));
+		throw new Error('Test websocket error');
+	}
+
+	@onErrorWS()
+	private onErrorWS(e: WSError) {
+		this.logger.error(e.error.message);
 	}
 }
 
@@ -120,7 +167,9 @@ class WampController2 {
 	private onTestTopic(data: WampRegistrationHandlerArgs) {
 		console.log('Received data: ', data);
 		data.result_handler({ argsList: ['Hello from WampController1'], options: { progress: true } });
+		// ...
 		data.result_handler({ argsList: ['Hello from WampController2'], options: { progress: true } });
+		// ...
 		data.result_handler({ argsList: ['Hello from WampController3'], options: { progress: true } });
 	}
 
@@ -130,12 +179,12 @@ class WampController2 {
 	}
 
 	@onOpenWamp()
-	private onOpenWamp() {
+	private onOpen() {
 		this.logger.log('Wamp connection opened');
 	}
 
 	@onCloseWamp()
-	private onCloseWamp() {
+	private onClose() {
 		this.logger.log('Wamp connection closed');
 	}
 
@@ -155,15 +204,7 @@ class WampController2 {
 	}
 }
 
-const c = get(UserController);
-if (c === null) {
-	console.error(`${UserController.name} not found!`);
-	process.exit(1);
-} else {
-	c.userService.say('hello Elysium, from user controller!');
-}
-
-const s = get<UserService>('user.service');
+const s = Service.get<UserService>('user.service');
 if (s === null) {
 	console.error(`${UserService.name} not found!`);
 	process.exit(1);
@@ -171,7 +212,7 @@ if (s === null) {
 	s.say('hello Elysium, from user service!');
 }
 
-const l = get(LoggerService);
+const l = Service.get(LoggerService);
 if (l === null) {
 	console.log(`${LoggerService.name} not found!`);
 	process.exit(1);
@@ -183,10 +224,7 @@ Event.on('elysium:error', (e: EventData<Error>) => {
 	console.error('Fuck', e.data.message);
 });
 
-Event.emit<string>('user:say', 'wowowow!!', c);
-
 console.log(l === s.logger);
-console.log(s === c.userService);
 
 const ws: ElysiaPlugin = Reflect.getMetadata(Symbols.elysiaPlugin, MessagingServer);
 if (ws === undefined) {
@@ -194,11 +232,18 @@ if (ws === undefined) {
 	process.exit(1);
 }
 
+const h: ElysiaPlugin = Reflect.getMetadata(Symbols.elysiaPlugin, UserController);
+if (h === undefined) {
+	console.error('No http route found!');
+	process.exit(1);
+}
+
 const app = new Elysia()
 	.use(ws())
+	.use(h())
 	.onRequest(({ request }) => console.log(request.url))
 	.get('/', async function () {
-		const values = [];
+		const values: any[] = [];
 		await w.call(
 			'test.topic.ext',
 			{

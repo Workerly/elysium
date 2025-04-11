@@ -1,12 +1,10 @@
-import 'reflect-metadata';
-
 import { Symbols } from './utils';
 
 /**
  * Describes the data needed when registering a macro.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type MacroRegristration = {
+export type MacroRegistration = {
 	/**
 	 * The name of the macro.
 	 */
@@ -36,7 +34,7 @@ export const asMacro = (name?: string): MethodDecorator => {
 			{
 				name: name ?? (propertyKey as string),
 				func: descriptor.value as Function
-			} satisfies MacroRegristration,
+			} satisfies MacroRegistration,
 			target,
 			propertyKey!
 		);

@@ -1,10 +1,11 @@
 import type { ServerWebSocket } from 'bun';
-import type { Context, TSchema } from 'elysia';
+import type { Context, ErrorContext, TSchema } from 'elysia';
 import type { Class, ConditionalPick, JsonObject, Primitive } from 'type-fest';
 
 import { Elysia } from 'elysia';
 
-import { bind } from './service';
+import { Event } from './event';
+import { Service } from './service';
 import { nextTick, Route, Symbols } from './utils';
 
 /**
@@ -34,13 +35,15 @@ export type WS<TData = unknown> = ServerWebSocket<
 		 * Unique identifier for the websocket connection.
 		 */
 		id: string;
-
-		/**
-		 * The Elysia context for the websocket connection.
-		 */
-		data: Context;
-	} & TData
+	} & Context &
+		TData
 >;
+
+/**
+ * The data generated when an error occurs in a websocket connection.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type WSError = ErrorContext & { error: Readonly<Error> };
 
 /**
  * Marks a class as a websocket controller.
@@ -54,13 +57,15 @@ export const websocket = (props: WebsocketProps) => {
 			console.log(`Registering Websocket route for ${props.path} using ${target.name}`);
 			await nextTick();
 
-			const controller = bind(target);
+			const controller = Service.make(target);
 
 			const metadata = Reflect.getMetadata(Symbols.websocket, target) ?? {};
 			const open = metadata.open?.bind(controller);
 			const close = metadata.close?.bind(controller);
 			const message = metadata.message?.bind(controller);
 			const drain = metadata.drain?.bind(controller);
+			const error =
+				metadata.error?.bind(controller) ?? ((e: WSError) => Event.emit('elysium:error', e.error));
 
 			const app = new Elysia();
 
@@ -72,6 +77,7 @@ export const websocket = (props: WebsocketProps) => {
 				close,
 				message,
 				drain,
+				error,
 				body: metadata.body,
 				...props.options
 			});
@@ -142,6 +148,21 @@ export const onDrain = (): MethodDecorator => {
 	return function (target, propertyKey, descriptor) {
 		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 		metadata.drain = descriptor.value;
+		Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
+	};
+};
+
+/**
+ * Marks a method as the websocket "error" event handler.
+ * @author Axel Nana <axel.nana@workbud.com>
+ *
+ * This decorator should be used on a websocket controller method. Only one "error" event handler
+ * can be defined per websocket controller.
+ */
+export const onError = (): MethodDecorator => {
+	return function (target, propertyKey, descriptor) {
+		const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
+		metadata.error = descriptor.value;
 		Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
 	};
 };
