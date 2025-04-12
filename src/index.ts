@@ -18,11 +18,13 @@ import {
 	get as getHttp,
 	http,
 	HttpControllerScope,
+	onRequest,
 	param,
 	post,
 	query,
 	sse
 } from './core/http';
+import { middleware, Middleware } from './core/middleware';
 import { module, Module } from './core/module';
 import { inject, Service, service, ServiceScope } from './core/service';
 import {
@@ -36,6 +38,14 @@ import {
 	wamp
 } from './core/wamp';
 import { onClose, onError as onErrorWS, onMessage, onOpen, websocket } from './core/websocket';
+
+class AuthMiddleware extends Middleware {
+	public onBeforeHandle(ctx: Context) {
+		if (ctx.headers.authorization !== 'Bearer secret') {
+			throw ctx.error(401, { message: 'Unauthorized' });
+		}
+	}
+}
 
 @service({ scope: ServiceScope.FACTORY })
 class LoggerService {
@@ -94,6 +104,7 @@ class UserController {
 		return this.userService.getUser(id);
 	}
 
+	@middleware(AuthMiddleware)
 	@post()
 	private post(@body(MessageData) b: MessageData, @query() q: any, @co() c: UserController) {
 		return { b, q, c };
@@ -112,6 +123,11 @@ class UserController {
 	private static addFromEvent(e: EventData<{ id: string; name: string }>) {
 		const us = Service.get<UserService>('user.service')!;
 		us.data.push(e.data);
+	}
+
+	@onRequest()
+	private onRequest(c: Context) {
+		this.userService.logger.log(`request received: ${c.request.method} ${c.path}`);
 	}
 }
 
@@ -213,7 +229,8 @@ class MainModule extends Module {
 class App extends Application {
 	public constructor() {
 		super({
-			name: App.name
+			name: App.name,
+			debug: true
 		});
 	}
 }

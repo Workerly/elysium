@@ -1,10 +1,19 @@
-import type { AnyElysia, Context, Handler, HTTPMethod, SingletonBase, TSchema } from 'elysia';
+import type {
+	AnyElysia,
+	Context,
+	Handler,
+	HTTPMethod,
+	PreContext,
+	SingletonBase,
+	TSchema
+} from 'elysia';
 import type { Class } from 'type-fest';
 import type { Route } from './utils';
 
 import { Elysia, t } from 'elysia';
 import { assign, isEmpty, objectify, trim, uid } from 'radash';
 
+import { Middleware } from './middleware';
 import { Service } from './service';
 import { nextTick, Symbols } from './utils';
 
@@ -58,6 +67,11 @@ type HttpRequestHandlerMetadata = {
 	 * Custom decorators for the handler.
 	 */
 	customDecorators: Array<{ handler: Handler; index: number }>;
+
+	/**
+	 * The middlewares for the handler.
+	 */
+	middlewares: Array<Class<Middleware>>;
 };
 
 /**
@@ -85,6 +99,8 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 	const rawContext = Reflect.getMetadata('http:rawContext', props.target, props.propertyKey);
 	const customDecorators =
 		Reflect.getMetadata('http:customDecorators', props.target, props.propertyKey) ?? [];
+	const middlewares =
+		Reflect.getMetadata(Symbols.middlewares, props.target, props.propertyKey) ?? [];
 
 	const { path, method, handler, target } = props;
 
@@ -99,7 +115,8 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 		query,
 		customDecorators,
 		rawContext,
-		handler
+		handler,
+		middlewares
 	});
 
 	Reflect.defineMetadata(Symbols.http, metadata, target.constructor);
@@ -168,10 +185,27 @@ export const http = (props: HttpProps) => {
 				}));
 			}
 
+			const onRequest = Reflect.getMetadata('http:onRequest', target) ?? {};
+			if (onRequest.handler) {
+				app.onRequest((c: PreContext<SingletonBase & { controller: any }>) => {
+					const controller = c.controller;
+					const handler = onRequest.handler.bind(controller);
+					return handler(c);
+				});
+			}
+
+			const middlewares = Reflect.getMetadata(Symbols.middlewares, target) ?? [];
+
+			for (const middleware of middlewares) {
+				const m = Service.make<Middleware>(middleware)!;
+				app.onAfterHandle(m.onAfterHandle.bind(m));
+				app.onBeforeHandle(m.onBeforeHandle.bind(m));
+				app.onAfterResponse(m.onAfterResponse.bind(m));
+			}
+
 			const metadata: HttpRequestHandlerMetadata[] =
 				Reflect.getMetadata(Symbols.http, target) ?? [];
 
-			// TODO: Add middlewares here
 			for (const route of metadata) {
 				const getParameters = async (c: Context) => {
 					const parameters: any[] = [];
@@ -255,6 +289,24 @@ export const http = (props: HttpProps) => {
 				app.route(route.method, `/${trim(route.path, '/')}`, getHandler(), {
 					// @ts-ignore
 					config: {},
+					beforeHandle(c: ContextWithController) {
+						for (const middleware of route.middlewares) {
+							const m = Service.make(middleware);
+							m.onBeforeHandle(c);
+						}
+					},
+					afterHandle(c: ContextWithController) {
+						for (const middleware of route.middlewares) {
+							const m = Service.make(middleware);
+							m.onAfterHandle(c);
+						}
+					},
+					afterResponse(c: ContextWithController) {
+						for (const middleware of route.middlewares) {
+							const m = Service.make(middleware);
+							m.onAfterResponse(c);
+						}
+					},
 					tags: props.tags,
 					body: route.body?.schema,
 					params: isEmpty(params) ? undefined : t.Object(params)
@@ -348,6 +400,14 @@ export const custom = (method: HTTPMethod, path: Route = '/'): MethodDecorator =
 				propertyKey
 			});
 		});
+	};
+};
+
+export const onRequest = (): MethodDecorator => {
+	return function (target, propertyKey, descriptor) {
+		const metadata = Reflect.getMetadata('http:onRequest', target.constructor) ?? {};
+		metadata.handler = descriptor.value;
+		Reflect.defineMetadata('http:onRequest', metadata, target.constructor);
 	};
 };
 
