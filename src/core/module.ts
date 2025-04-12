@@ -3,8 +3,9 @@ import type { Class } from 'type-fest';
 import Elysia, { AnyElysia } from 'elysia';
 import { assign } from 'radash';
 
+import { applyMiddlewares, Middleware } from './middleware';
 import { Service } from './service';
-import { nextTick, Symbols } from './utils';
+import { nextTick, Route, Symbols } from './utils';
 
 /**
  * Properties required when declaring a module using the `@module()` decorator.
@@ -36,15 +37,18 @@ export type ModuleProps = {
  */
 export const module = (options: ModuleProps) => {
 	return function (target: Class<Module>) {
-		async function handleModule(m: Module): Promise<AnyElysia> {
+		async function handleModule(m: Module): Promise<Elysia<Route>> {
 			// TODO: Use the logger service here
 			console.log(`Registering module ${target.name}`);
 			await nextTick();
 
 			const props = assign({ controllers: [], middlewares: [] }, options) as Required<ModuleProps>;
 
-			const plugin: AnyElysia = new Elysia({ name: target.name });
+			const plugin: Elysia<Route> = new Elysia({ name: target.name });
 			plugin.decorate('module', m);
+
+			const middlewares = Reflect.getMetadata(Symbols.middlewares, target) ?? [];
+			applyMiddlewares(middlewares, plugin);
 
 			for (const controller of props.controllers) {
 				const app = Reflect.getMetadata(Symbols.elysiaPlugin, controller);

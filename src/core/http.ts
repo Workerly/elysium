@@ -13,7 +13,7 @@ import type { Route } from './utils';
 import { Elysia, t } from 'elysia';
 import { assign, isEmpty, objectify, trim, uid } from 'radash';
 
-import { Middleware } from './middleware';
+import { applyMiddlewares, executeMiddlewareChain, Middleware } from './middleware';
 import { Service } from './service';
 import { nextTick, Symbols } from './utils';
 
@@ -168,7 +168,7 @@ export type HttpProps = {
  */
 export const http = (props: HttpProps) => {
 	return function (target: Class<any>) {
-		async function handleHttp(): Promise<AnyElysia> {
+		async function handleHttp(): Promise<Elysia<Route>> {
 			// TODO: Use the logger service here
 			console.log(`Registering HTTP route for ${props.path} using ${target.name}`);
 			await nextTick();
@@ -195,13 +195,7 @@ export const http = (props: HttpProps) => {
 			}
 
 			const middlewares = Reflect.getMetadata(Symbols.middlewares, target) ?? [];
-
-			for (const middleware of middlewares) {
-				const m = Service.make<Middleware>(middleware)!;
-				app.onAfterHandle(m.onAfterHandle.bind(m));
-				app.onBeforeHandle(m.onBeforeHandle.bind(m));
-				app.onAfterResponse(m.onAfterResponse.bind(m));
-			}
+			applyMiddlewares(middlewares, app);
 
 			const metadata: HttpRequestHandlerMetadata[] =
 				Reflect.getMetadata(Symbols.http, target) ?? [];
@@ -286,28 +280,23 @@ export const http = (props: HttpProps) => {
 					(p) => p.schema
 				);
 
-				app.route(route.method, `/${trim(route.path, '/')}`, getHandler(), {
+				const mi = route.middlewares.map((middleware) => Service.make<Middleware>(middleware));
+
+				app.route(route.method, route.path, getHandler(), {
 					// @ts-ignore
 					config: {},
 					beforeHandle(c: ContextWithController) {
-						for (const middleware of route.middlewares) {
-							const m = Service.make(middleware);
-							m.onBeforeHandle(c);
-						}
+						return executeMiddlewareChain(mi, c, 'onBeforeHandle');
 					},
 					afterHandle(c: ContextWithController) {
-						for (const middleware of route.middlewares) {
-							const m = Service.make(middleware);
-							m.onAfterHandle(c);
-						}
+						return executeMiddlewareChain(mi, c, 'onAfterHandle');
 					},
 					afterResponse(c: ContextWithController) {
-						for (const middleware of route.middlewares) {
-							const m = Service.make(middleware);
-							m.onAfterResponse(c);
-						}
+						return executeMiddlewareChain(mi, c, 'onAfterResponse');
 					},
-					tags: props.tags,
+					detail: {
+						tags: props.tags
+					},
 					body: route.body?.schema,
 					params: isEmpty(params) ? undefined : t.Object(params)
 				});

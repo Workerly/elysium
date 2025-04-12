@@ -47,6 +47,12 @@ class AuthMiddleware extends Middleware {
 	}
 }
 
+class XServerMiddleware extends Middleware {
+	public onBeforeHandle(ctx: Context) {
+		ctx.set.headers['X-Server'] = 'Elysium';
+	}
+}
+
 @service({ scope: ServiceScope.FACTORY })
 class LoggerService {
 	public log(msg: string) {
@@ -104,7 +110,6 @@ class UserController {
 		return this.userService.getUser(id);
 	}
 
-	@middleware(AuthMiddleware)
 	@post()
 	private post(@body(MessageData) b: MessageData, @query() q: any, @co() c: UserController) {
 		return { b, q, c };
@@ -225,6 +230,7 @@ class MainModule extends Module {
 	}
 }
 
+@middleware(XServerMiddleware, AuthMiddleware)
 @app({ modules: [MainModule] })
 class App extends Application {
 	public constructor() {

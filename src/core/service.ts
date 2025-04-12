@@ -156,7 +156,7 @@ export const inject = (name?: string): ParameterDecorator => {
 
 export namespace Service {
 	/**
-	 * Retrieves a registered service's instance.
+	 * Retrieves a registered service's instance from the container.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param service The name of the service, or its class.
 	 * @returns An instance of the registered service, or `null` if no service with that name/type was registered.
@@ -175,6 +175,10 @@ export namespace Service {
 	/**
 	 * Instantiates a service with its dependencies.
 	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
+	 * This function always create a new instance of the service, even if the service's scope is `ServiceScope.SINGLETON`
+	 * and it has already been registered in the container.
+	 *
 	 * @param service The service class to instantiate.
 	 */
 	export const make = <T>(service: TypedServiceClass<T>): T => {
@@ -206,24 +210,8 @@ export namespace Service {
 	 * @param name An optional name for the service. If not set, the name of the service class is used instead.
 	 */
 	export const bind = <T>(service: TypedServiceClass<T>, name?: string): T => {
-		const serviceName = name ?? service.name;
-
-		if (servicesRegistry.has(serviceName)) {
-			// TODO: Use the logger service here
-			console.error(`A service with the name ${serviceName} has already been registered.`);
-			process.exit(1);
-		}
-
 		const s = make(service);
-
-		servicesRegistry.set(serviceName, {
-			scope: ServiceScope.SINGLETON,
-			factory() {
-				return s;
-			}
-		});
-
-		return s;
+		return instance(name ?? service.name, s);
 	};
 
 	/**
@@ -249,5 +237,30 @@ export namespace Service {
 		});
 
 		return factory();
+	};
+
+	/**
+	 * Binds a service's instance to the container.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param service The service class or name to bind.
+	 * @param instance The instance to bind.
+	 */
+	export const instance = <T>(service: string | TypedServiceClass<T>, instance: T): T => {
+		const serviceName = isString(service) ? service : service.name;
+
+		if (servicesRegistry.has(serviceName)) {
+			// TODO: Use the logger service here
+			console.error(`A service with the name ${serviceName} has already been registered.`);
+			process.exit(1);
+		}
+
+		servicesRegistry.set(serviceName, {
+			scope: ServiceScope.SINGLETON,
+			factory() {
+				return instance;
+			}
+		});
+
+		return instance;
 	};
 }

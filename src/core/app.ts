@@ -1,4 +1,4 @@
-import type { AnyElysia, ElysiaConfig, ErrorContext } from 'elysia';
+import type { ElysiaConfig, ErrorContext } from 'elysia';
 import type { Class } from 'type-fest';
 import type { Module } from './module';
 import type { Route } from './utils';
@@ -6,6 +6,7 @@ import type { Route } from './utils';
 import { Elysia } from 'elysia';
 
 import { Event } from './event';
+import { applyMiddlewares } from './middleware';
 import { Service } from './service';
 import { Symbols } from './utils';
 
@@ -73,7 +74,7 @@ export abstract class Application {
 	/**
 	 * Gets the Elysia instance.
 	 */
-	public get elysia(): AnyElysia {
+	public get elysia(): Elysia<Route> {
 		return this.#elysia;
 	}
 
@@ -119,6 +120,9 @@ export abstract class Application {
 	 */
 	public async start(port: number = 3000): Promise<void> {
 		const modules: Class<Module>[] = Reflect.getMetadata(Symbols.modules, this.constructor) ?? [];
+
+		const middlewares = Reflect.getMetadata(Symbols.middlewares, this.constructor) ?? [];
+		applyMiddlewares(middlewares, this.#elysia);
 
 		for (const moduleClass of modules) {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, moduleClass);
