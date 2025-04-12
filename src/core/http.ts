@@ -3,7 +3,7 @@ import type { Class } from 'type-fest';
 import type { Route } from './utils';
 
 import { Elysia, t } from 'elysia';
-import { assign, isEmpty, objectify, trim } from 'radash';
+import { assign, isEmpty, objectify, trim, uid } from 'radash';
 
 import { Service } from './service';
 import { nextTick, Symbols } from './utils';
@@ -111,12 +111,12 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
  */
 export enum HttpControllerScope {
 	/**
-	 * The controller is instantiated once in the server.
+	 * The controller is instantiated once in the server and used for every request.
 	 */
 	SERVER,
 
 	/**
-	 * The controller is instantiated once per request.
+	 * A new instance of the controller is created for each request.
 	 */
 	REQUEST
 }
@@ -204,6 +204,9 @@ export const http = (props: HttpProps) => {
 				};
 
 				const isGenerator = route.handler.constructor.name.includes('GeneratorFunction');
+				const isSSE = route.method === 'elysium:SSE';
+
+				route.method = isSSE ? 'GET' : route.method;
 
 				const getHandler = () => {
 					if (isGenerator) {
@@ -216,6 +219,22 @@ export const http = (props: HttpProps) => {
 									yield eachValue;
 							} catch (error: any) {
 								yield error;
+							}
+						};
+					}
+
+					if (isSSE) {
+						return async function* (c: ContextWithController) {
+							const controller = c.controller;
+							const handler = route.handler.bind(controller);
+
+							c.set.headers['Content-Type'] = 'text/event-stream';
+							c.set.headers['Cache-Control'] = 'no-cache';
+							c.set.headers['Connection'] = 'keep-alive';
+
+							while (true) {
+								yield `data: ${await handler(...(await getParameters(c)))}\n\n`;
+								await Bun.sleep(1);
 							}
 						};
 					}
@@ -248,6 +267,13 @@ export const http = (props: HttpProps) => {
 		Reflect.defineMetadata(Symbols.elysiaPlugin, handleHttp, target);
 	};
 };
+
+/**
+ * Marks a method as an HTTP "server-sent events" request handler.
+ * @author Axel Nana <axel.nana@workbud.com>
+ * @param path The path of the HTTP route.
+ */
+export const sse = (path: Route = '/'): MethodDecorator => custom('elysium:SSE', path);
 
 /**
  * Marks a method as an HTTP "get" request handler.

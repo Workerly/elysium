@@ -1,11 +1,12 @@
 import 'reflect-metadata';
 
+import type { Context } from 'elysia';
 import type { EventData } from './core/event';
 import type { WampRegistrationHandlerArgs } from './core/wamp';
 import type { WS, WSError } from './core/websocket';
 
-import { Context, t } from 'elysia';
-import { list, uid } from 'radash';
+import { t } from 'elysia';
+import { isEmpty, list, uid } from 'radash';
 
 import { app, Application } from './core/app';
 import { Event, on } from './core/event';
@@ -19,7 +20,8 @@ import {
 	HttpControllerScope,
 	param,
 	post,
-	query
+	query,
+	sse
 } from './core/http';
 import { module, Module } from './core/module';
 import { inject, Service, service, ServiceScope } from './core/service';
@@ -46,9 +48,11 @@ class LoggerService {
 	}
 }
 
-@service({ name: 'user.service' })
+@service({ name: 'user.service', scope: ServiceScope.SINGLETON })
 class UserService {
 	public constructor(@inject() public logger: LoggerService) {}
+
+	public data: any[] = [];
 
 	public say(sth: string) {
 		this.logger.log(sth);
@@ -95,12 +99,19 @@ class UserController {
 		return { b, q, c };
 	}
 
-	@get()
-	private async *get(@query() q: any, @context() c: any) {
-		for (const each of list(15)) {
-			yield each;
-			await Bun.sleep(1000);
+	@sse()
+	private async sse(@query() q: any, @context() c: Context) {
+		while (isEmpty(this.userService.data)) {
+			await Bun.sleep(1);
 		}
+
+		return JSON.stringify(this.userService.data.shift());
+	}
+
+	@on({ event: 'user:add' })
+	private static addFromEvent(e: EventData<{ id: string; name: string }>) {
+		const us = Service.get<UserService>('user.service')!;
+		us.data.push(e.data);
 	}
 }
 
@@ -210,5 +221,9 @@ class App extends Application {
 Event.on('elysium:error', (e: EventData<Error>) => {
 	console.error('Fuck', e.data.message);
 });
+
+setInterval(() => {
+	Event.emit('user:add', { id: uid(8), name: `User ${uid(8)}` });
+}, 1000);
 
 await new App().start();
