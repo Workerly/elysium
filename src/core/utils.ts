@@ -3,7 +3,7 @@ import type { Elysia } from 'elysia';
 export type Route = `/${string}`;
 
 export namespace Symbols {
-	export const modules = Symbol('modules');
+	export const app = Symbol('app');
 
 	export const controllers = Symbol('controllers');
 

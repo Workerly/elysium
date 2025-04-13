@@ -75,4 +75,35 @@ export namespace Connection {
 
 		return Service.instance(getConnectionName(name), drizzle(config));
 	};
+
+	/**
+	 * Checks if a connection with the given name exists.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the connection to check.
+	 * @returns `true` if the connection exists, `false` otherwise.
+	 */
+	export const exists = (name: string) => {
+		return Service.exists(getConnectionName(name));
+	};
+
+	/**
+	 * Retrieves the default connection.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @returns The default connection.
+	 */
+	export const getDefault = () => {
+		return get('default');
+	};
+
+	/**
+	 * Sets the default connection.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the connection to set as default.
+	 * @returns The default connection.
+	 */
+	export const setDefault = (name: string) => {
+		const serviceName = getConnectionName('default');
+		Service.remove(serviceName);
+		return Service.instance(serviceName, get(name));
+	};
 }

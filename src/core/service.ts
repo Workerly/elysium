@@ -265,6 +265,16 @@ export namespace Service {
 	};
 
 	/**
+	 * Removes a service from the container.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param service The service class or name to remove.
+	 */
+	export const remove = (service: string | TypedServiceClass<any>): void => {
+		const serviceName = isString(service) ? service : service.name;
+		servicesRegistry.delete(serviceName);
+	};
+
+	/**
 	 * Checks if a service exists in the container.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param service The service class or name to check.

@@ -1,10 +1,13 @@
 import type { ElysiaConfig, ErrorContext } from 'elysia';
 import type { Class } from 'type-fest';
+import type { ConnectionProps } from '../db/connection';
 import type { Module } from './module';
 import type { Route } from './utils';
 
 import { Elysia } from 'elysia';
+import { assign } from 'radash';
 
+import { Connection } from '../db/connection';
 import { Event } from './event';
 import { applyMiddlewares } from './middleware';
 import { Service } from './service';
@@ -19,6 +22,21 @@ export type AppProps = {
 	 * The list of modules provided the app.
 	 */
 	modules?: Class<any>[];
+
+	/**
+	 * The database configuration for the app.
+	 */
+	database?: {
+		/**
+		 * The default connection name.
+		 */
+		default: string;
+
+		/**
+		 * The list of connections.
+		 */
+		connections: Record<string, ConnectionProps>;
+	};
 };
 
 /**
@@ -27,7 +45,8 @@ export type AppProps = {
  */
 export const app = (props: AppProps): ClassDecorator => {
 	return function (target) {
-		Reflect.defineMetadata(Symbols.modules, props.modules ?? [], target);
+		props = assign({ modules: [], database: undefined }, props);
+		Reflect.defineMetadata(Symbols.app, props, target);
 	};
 };
 
@@ -69,6 +88,8 @@ export abstract class Application {
 			this.onStop(c);
 			Event.emit('elysium:app:stop', c);
 		});
+
+		Service.instance('elysium.app', this);
 	}
 
 	/**
@@ -98,7 +119,7 @@ export abstract class Application {
 	 * @param e The error context.
 	 * @returns Whether to continue the error propagation.
 	 */
-	public onError(e: ErrorContext): boolean {
+	protected onError(e: ErrorContext): boolean {
 		return true;
 	}
 
@@ -106,25 +127,35 @@ export abstract class Application {
 	 * Hook that is executed when the application starts.
 	 * @param elysia The Elysia instance.
 	 */
-	public onStart(elysia: Elysia<Route>): void {}
+	protected onStart(elysia: Elysia<Route>): void {}
 
 	/**
 	 * Hook that is executed when the application stops.
 	 * @param elysia The Elysia instance.
 	 */
-	public onStop(elysia: Elysia<Route>): void {}
+	protected onStop(elysia: Elysia<Route>): void {}
 
 	/**
 	 * Starts the application on the specified port.
 	 * @param port The port to listen on.
 	 */
 	public async start(port: number = 3000): Promise<void> {
-		const modules: Class<Module>[] = Reflect.getMetadata(Symbols.modules, this.constructor) ?? [];
+		const { modules, database }: AppProps = Reflect.getMetadata(Symbols.app, this.constructor)!;
+
+		if (database) {
+			for (const connectionName in database.connections) {
+				Connection.register(connectionName, database.connections[connectionName]);
+			}
+
+			if (Connection.exists(database.default)) {
+				Connection.setDefault(database.default);
+			}
+		}
 
 		const middlewares = Reflect.getMetadata(Symbols.middlewares, this.constructor) ?? [];
 		applyMiddlewares(middlewares, this.#elysia);
 
-		for (const moduleClass of modules) {
+		for (const moduleClass of modules!) {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, moduleClass);
 			if (plugin === undefined) {
 				// TODO: Use the logger service here

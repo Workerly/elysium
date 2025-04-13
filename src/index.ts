@@ -1,12 +1,13 @@
 import 'reflect-metadata';
 
-import type { Context } from 'elysia';
 import type { EventData } from './core/event';
+import type { Context } from './core/http';
 import type { WampRegistrationHandlerArgs } from './core/wamp';
 import type { WS, WSError } from './core/websocket';
 
+import { integer, pgTable, uuid, varchar } from 'drizzle-orm/pg-core';
 import { t } from 'elysia';
-import { isEmpty, list, uid } from 'radash';
+import { isEmpty, uid } from 'radash';
 
 import { app, Application } from './core/app';
 import { Event, on } from './core/event';
@@ -14,8 +15,8 @@ import {
 	body,
 	context,
 	decorate,
+	del,
 	get,
-	get as getHttp,
 	http,
 	HttpControllerScope,
 	onRequest,
@@ -38,6 +39,8 @@ import {
 	wamp
 } from './core/wamp';
 import { onClose, onError as onErrorWS, onMessage, onOpen, websocket } from './core/websocket';
+import { Connection } from './db/connection';
+import { Repository } from './db/repository';
 
 class AuthMiddleware extends Middleware {
 	public onBeforeHandle(ctx: Context) {
@@ -53,6 +56,22 @@ class XServerMiddleware extends Middleware {
 	}
 }
 
+export const usersTable = pgTable('users', {
+	id: uuid().primaryKey().defaultRandom(),
+	name: varchar({ length: 255 }).notNull(),
+	age: integer().notNull(),
+	email: varchar({ length: 255 }).notNull().unique()
+});
+
+export type User = typeof usersTable.$inferSelect;
+export type UserInsert = typeof usersTable.$inferInsert;
+export type UserUpdate = Partial<User>;
+
+@service()
+class UserRepository extends Repository(usersTable) {
+	public static readonly connection = 'main';
+}
+
 @service({ scope: ServiceScope.FACTORY })
 class LoggerService {
 	public log(msg: string) {
@@ -66,7 +85,10 @@ class LoggerService {
 
 @service({ name: 'user.service', scope: ServiceScope.SINGLETON })
 class UserService {
-	public constructor(@inject() public logger: LoggerService) {}
+	public constructor(
+		@inject() public logger: LoggerService,
+		@inject() public userRepository: UserRepository
+	) {}
 
 	public data: any[] = [];
 
@@ -75,7 +97,7 @@ class UserService {
 	}
 
 	getUser(id: string) {
-		return { id, name: `User ${id}` };
+		return this.userRepository.find(id);
 	}
 
 	@on({ event: 'user:say' })
@@ -86,36 +108,45 @@ class UserService {
 	}
 }
 
-const MessageData = t.Object({
-	message: t.String()
+const UserCreateSchema = t.Object({
+	name: t.String(),
+	age: t.Number(),
+	email: t.String()
 });
 
-type MessageData = typeof MessageData.static;
-
 const co = decorate((c: Context) => {
-	// @ts-ignore
 	return c.controller;
 });
 
 @http({ path: '/users', scope: HttpControllerScope.SERVER })
 class UserController {
 	public constructor(
-		@inject('user.service') public userService: UserService,
+		@inject('user.service') public readonly userService: UserService,
+		@inject('db.connection.main') public readonly db: Connection,
 		public id: string = uid(8)
 	) {}
 
-	@getHttp('/:id')
+	@get()
+	private list() {
+		return this.userService.userRepository.all();
+	}
+
+	@del()
+	private deleteAll() {
+		return this.userService.userRepository.deleteAll();
+	}
+
+	@get('/:id')
 	private getUser(@param('id') id: string, @context() c: any) {
-		console.log(c);
 		return this.userService.getUser(id);
 	}
 
 	@post()
-	private post(@body(MessageData) b: MessageData, @query() q: any, @co() c: UserController) {
-		return { b, q, c };
+	private post(@body(UserCreateSchema) b: UserInsert, @query() q: any, @co() c: UserController) {
+		return this.db.insert(usersTable).values(b).returning();
 	}
 
-	@sse()
+	@sse('/:id/notifications')
 	private async sse(@query() q: any, @context() c: Context) {
 		while (isEmpty(this.userService.data)) {
 			await Bun.sleep(1);
@@ -150,10 +181,10 @@ class MessagingServer {
 		this.logger.log('websocket closed');
 	}
 
-	@onMessage(MessageData)
-	private onMessage(ws: WS, data: MessageData) {
-		this.logger.log(`received message: ${data.message} from ${ws.data.id}`);
-		ws.send(JSON.stringify({ message: `Echo: ${data.message}` }));
+	@onMessage(UserCreateSchema)
+	private onMessage(ws: WS, data: UserInsert) {
+		this.logger.log(`received message: ${JSON.stringify(data)} from ${ws.data.id}`);
+		ws.send(JSON.stringify({ message: `Created user ${data.name}` }));
 		throw new Error('Test websocket error');
 	}
 
@@ -231,7 +262,10 @@ class MainModule extends Module {
 }
 
 @middleware(XServerMiddleware, AuthMiddleware)
-@app({ modules: [MainModule] })
+@app({
+	modules: [MainModule],
+	database: { default: 'main', connections: { main: { connection: process.env.DATABASE_URL! } } }
+})
 class App extends Application {
 	public constructor() {
 		super({
@@ -242,7 +276,7 @@ class App extends Application {
 }
 
 Event.on('elysium:error', (e: EventData<Error>) => {
-	console.error('Fuck', e.data.message);
+	console.error('Fuck', JSON.stringify(e));
 });
 
 setInterval(() => {
