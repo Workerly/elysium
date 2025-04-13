@@ -110,7 +110,7 @@ export const service = (options?: ServiceProps) => {
 		const name = options?.name ?? target.name;
 		const scope = options?.scope ?? ServiceScope.SINGLETON;
 
-		if (servicesRegistry.has(name)) {
+		if (Service.exists(name)) {
 			// TODO: Use the logger service here
 			console.error(`A service with the name ${name} has already been registered.`);
 			process.exit(1);
@@ -164,7 +164,7 @@ export namespace Service {
 	export const get = <T>(service: string | TypedServiceClass<T>): T | null => {
 		const name = isString(service) ? service : service.name;
 
-		if (servicesRegistry.has(name)) {
+		if (exists(name)) {
 			const service = servicesRegistry.get(name)!;
 			return service.factory() as T;
 		}
@@ -223,7 +223,7 @@ export namespace Service {
 	export const factory = <T>(service: TypedServiceClass<T>, name?: string): T => {
 		const serviceName = name ?? service.name;
 
-		if (servicesRegistry.has(serviceName)) {
+		if (exists(serviceName)) {
 			// TODO: Use the logger service here
 			console.error(`A service with the name ${serviceName} has already been registered.`);
 			process.exit(1);
@@ -248,7 +248,7 @@ export namespace Service {
 	export const instance = <T>(service: string | TypedServiceClass<T>, instance: T): T => {
 		const serviceName = isString(service) ? service : service.name;
 
-		if (servicesRegistry.has(serviceName)) {
+		if (exists(serviceName)) {
 			// TODO: Use the logger service here
 			console.error(`A service with the name ${serviceName} has already been registered.`);
 			process.exit(1);
@@ -262,5 +262,16 @@ export namespace Service {
 		});
 
 		return instance;
+	};
+
+	/**
+	 * Checks if a service exists in the container.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param service The service class or name to check.
+	 * @returns `true` if the service exists, `false` otherwise.
+	 */
+	export const exists = (service: string | TypedServiceClass<any>): boolean => {
+		const serviceName = isString(service) ? service : service.name;
+		return servicesRegistry.has(serviceName);
 	};
 }

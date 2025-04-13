@@ -1,5 +1,6 @@
-import type { Context, Elysia } from 'elysia';
+import type { Elysia } from 'elysia';
 import type { Class } from 'type-fest';
+import type { Context } from './http';
 import type { Route } from './utils';
 
 import { Service } from './service';

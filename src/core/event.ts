@@ -10,6 +10,14 @@ class EventBus extends EventEmitter {
 	private constructor() {
 		super();
 	}
+
+	public emitError(error: unknown) {
+		this.emit('elysium:error', { data: error, source: null });
+	}
+
+	public emitEvent(event: string, data: unknown, source: unknown = null) {
+		this.emit(event, { data, source });
+	}
 }
 
 /**
@@ -71,8 +79,8 @@ export const on = (options: Omit<ListenProps, 'mode'>): MethodDecorator => {
 		const listener = async function (eventData: EventData<any>) {
 			try {
 				await (descriptor.value as EventHandler<any>)(eventData);
-			} catch (e) {
-				EventBus.instance.emit('elysium:error', { data: e, source: null });
+			} catch (e: unknown) {
+				EventBus.instance.emitError(e);
 			}
 		};
 
@@ -134,10 +142,7 @@ export namespace Event {
 		data: TData,
 		source: TSource | null = null
 	): void => {
-		EventBus.instance.emit(event, {
-			data,
-			source
-		} satisfies EventData<TData, TSource>);
+		EventBus.instance.emitEvent(event, data, source);
 	};
 
 	/**

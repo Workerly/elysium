@@ -1,6 +1,6 @@
 import type {
 	AnyElysia,
-	Context,
+	Context as ElysiaContext,
 	Handler,
 	HTTPMethod,
 	PreContext,
@@ -90,7 +90,10 @@ type HttpRequestHandlerRegistrationProps = Pick<
  * The Elysia context with the controller injected.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-type ContextWithController = Context<{}, SingletonBase & { controller: any }>;
+export type Context<TController = unknown, TModule = unknown> = ElysiaContext<
+	{},
+	SingletonBase & { controller: TController; module: TModule }
+>;
 
 const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) => {
 	const body = Reflect.getMetadata('http:body', props.target, props.propertyKey);
@@ -238,7 +241,7 @@ export const http = (props: HttpProps) => {
 
 				const getHandler = () => {
 					if (isGenerator) {
-						return async function* (c: ContextWithController) {
+						return async function* (c: Context) {
 							const controller = c.controller;
 							const handler = route.handler.bind(controller);
 
@@ -252,7 +255,7 @@ export const http = (props: HttpProps) => {
 					}
 
 					if (isSSE) {
-						return async function* (c: ContextWithController) {
+						return async function* (c: Context) {
 							const controller = c.controller;
 							const handler = route.handler.bind(controller);
 
@@ -267,7 +270,7 @@ export const http = (props: HttpProps) => {
 						};
 					}
 
-					return async function (c: ContextWithController) {
+					return async function (c: Context) {
 						const controller = c.controller;
 						const handler = route.handler.bind(controller);
 						return handler(...(await getParameters(c)));
@@ -285,13 +288,13 @@ export const http = (props: HttpProps) => {
 				app.route(route.method, route.path, getHandler(), {
 					// @ts-ignore
 					config: {},
-					beforeHandle(c: ContextWithController) {
+					beforeHandle(c: Context) {
 						return executeMiddlewareChain(mi, c, 'onBeforeHandle');
 					},
-					afterHandle(c: ContextWithController) {
+					afterHandle(c: Context) {
 						return executeMiddlewareChain(mi, c, 'onAfterHandle');
 					},
-					afterResponse(c: ContextWithController) {
+					afterResponse(c: Context) {
 						return executeMiddlewareChain(mi, c, 'onAfterResponse');
 					},
 					detail: {
