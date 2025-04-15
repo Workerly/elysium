@@ -71,6 +71,28 @@ type InjectedService = {
 };
 
 /**
+ * Type for a factory function.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+type FactoryFn<T> = () => T extends void ? never : T;
+
+/**
+ * Utility function to check if a value is a class.
+ * @author Axel Nana <axel.nana@workbud.com>
+ * @param value The value to check.
+ * @returns `true` if the value is a class, `false` otherwise.
+ */
+const isClass = <T>(value: Class<T> | FactoryFn<T>): value is Class<T> => {
+	return typeof value === 'function' && value.prototype && value.prototype.constructor === value;
+};
+
+/**
+ * Storage for registered services.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+const servicesRegistry = new Map<string, ServiceRegistration>();
+
+/**
  * Properties required when declaring a service using the `@service()` decorator.
  * @author Axel Nana <axel.nana@workbud.com>
  */
@@ -93,12 +115,6 @@ export type ServiceProps = Partial<{
 	 */
 	scope: ServiceScope;
 }>;
-
-/**
- * Storage for registered services.
- * @author Axel Nana <axel.nana@workbud.com>
- */
-const servicesRegistry = new Map<string, ServiceRegistration>();
 
 /**
  * Marks a class as a service
@@ -220,7 +236,10 @@ export namespace Service {
 	 * @param service The service class to bind.
 	 * @param name An optional name for the service. If not set, the name of the service class is used instead.
 	 */
-	export const factory = <T>(service: TypedServiceClass<T>, name?: string): T => {
+	export const factory = <T>(
+		service: TypedServiceClass<T> | FactoryFn<T>,
+		name: typeof service extends FactoryFn<T> ? string : string | undefined
+	): T => {
 		const serviceName = name ?? service.name;
 
 		if (exists(serviceName)) {
@@ -229,7 +248,9 @@ export namespace Service {
 			process.exit(1);
 		}
 
-		const factory = () => make(service);
+		const factory = () => {
+			return !isClass(service) ? service() : make(service);
+		};
 
 		servicesRegistry.set(serviceName, {
 			scope: ServiceScope.FACTORY,

@@ -1,10 +1,9 @@
 import type { Class } from 'type-fest';
 
-import Elysia, { AnyElysia } from 'elysia';
+import Elysia from 'elysia';
 import { assign } from 'radash';
 
-import { applyMiddlewares, Middleware } from './middleware';
-import { Service } from './service';
+import { applyMiddlewares } from './middleware';
 import { nextTick, Route, Symbols } from './utils';
 
 /**

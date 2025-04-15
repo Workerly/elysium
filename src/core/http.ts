@@ -1,5 +1,4 @@
 import type {
-	AnyElysia,
 	Context as ElysiaContext,
 	Handler,
 	HTTPMethod,
@@ -8,10 +7,11 @@ import type {
 	TSchema
 } from 'elysia';
 import type { Class } from 'type-fest';
+import type { Module } from './module';
 import type { Route } from './utils';
 
 import { Elysia, t } from 'elysia';
-import { assign, isEmpty, objectify, trim, uid } from 'radash';
+import { assign, isEmpty, objectify } from 'radash';
 
 import { applyMiddlewares, executeMiddlewareChain, Middleware } from './middleware';
 import { Service } from './service';
@@ -44,6 +44,11 @@ type HttpRequestHandlerMetadata = {
 	handler: HttpRequestHandler;
 
 	/**
+	 * The response schema.
+	 */
+	response?: TSchema;
+
+	/**
 	 * The request body schema.
 	 */
 	body?: { schema?: TSchema; index: number };
@@ -72,6 +77,16 @@ type HttpRequestHandlerMetadata = {
 	 * The middlewares for the handler.
 	 */
 	middlewares: Array<Class<Middleware>>;
+
+	/**
+	 * The OpenAPI's operationId for the handler.
+	 */
+	operationId?: string;
+
+	/**
+	 * The OpenAPI's description for the handler.
+	 */
+	description?: string;
 };
 
 /**
@@ -80,19 +95,40 @@ type HttpRequestHandlerMetadata = {
  */
 type HttpRequestHandlerRegistrationProps = Pick<
 	HttpRequestHandlerMetadata,
-	'path' | 'method' | 'handler'
+	'path' | 'method' | 'handler' | 'response' | 'operationId' | 'description'
 > & {
 	target: Object;
 	propertyKey: string | symbol;
 };
 
 /**
+ * Metadata for the HTTP context.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type Singleton<TController = unknown, TModule extends Module = Module> = SingletonBase & {
+	/**
+	 * The controller instance.
+	 */
+	controller: TController;
+
+	/**
+	 * The module instance.
+	 */
+	module: TModule;
+
+	/**
+	 * The tenant ID.
+	 */
+	tenant: string;
+};
+
+/**
  * The Elysia context with the controller injected.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type Context<TController = unknown, TModule = unknown> = ElysiaContext<
+export type Context<TController = unknown, TModule extends Module = Module> = ElysiaContext<
 	{},
-	SingletonBase & { controller: TController; module: TModule }
+	Singleton<TController, TModule>
 >;
 
 const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) => {
@@ -105,7 +141,7 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 	const middlewares =
 		Reflect.getMetadata(Symbols.middlewares, props.target, props.propertyKey) ?? [];
 
-	const { path, method, handler, target } = props;
+	const { path, method, handler, target, response, operationId, description } = props;
 
 	const metadata: HttpRequestHandlerMetadata[] =
 		Reflect.getMetadata(Symbols.http, target.constructor) ?? [];
@@ -119,7 +155,10 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 		customDecorators,
 		rawContext,
 		handler,
-		middlewares
+		middlewares,
+		response,
+		operationId,
+		description
 	});
 
 	Reflect.defineMetadata(Symbols.http, metadata, target.constructor);
@@ -178,7 +217,10 @@ export const http = (props: HttpProps) => {
 
 			props = assign({ path: '/', scope: HttpControllerScope.SERVER, tags: [] }, props);
 
-			const app = new Elysia({ prefix: props.path, name: target.name });
+			const app = new Elysia({
+				prefix: props.path,
+				name: target.name
+			});
 
 			if (props.scope === HttpControllerScope.SERVER) {
 				app.decorate('controller', Service.make(target));
@@ -298,9 +340,12 @@ export const http = (props: HttpProps) => {
 						return executeMiddlewareChain(mi, c, 'onAfterResponse');
 					},
 					detail: {
-						tags: props.tags
+						tags: props.tags,
+						description: route.description,
+						operationId: route.operationId
 					},
 					body: route.body?.schema,
+					response: route.response,
 					params: isEmpty(params) ? undefined : t.Object(params)
 				});
 			}
@@ -313,75 +358,151 @@ export const http = (props: HttpProps) => {
 };
 
 /**
+ * Properties required when declaring an HTTP request handler.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type RequestHandlerDecoratorProps = {
+	/**
+	 * The HTTP method of the handler.
+	 */
+	method?: HTTPMethod;
+
+	/**
+	 * The path of the HTTP route.
+	 */
+	path?: Route;
+
+	/**
+	 * The schema of the response body.
+	 */
+	response?: TSchema;
+
+	/**
+	 * The operation ID for the handler.
+	 * Used in Swagger documentation.
+	 */
+	operationId?: string;
+
+	/**
+	 * The description for the handler.
+	 * Used in Swagger documentation.
+	 */
+	description?: string;
+};
+
+/**
  * Marks a method as an HTTP "server-sent events" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const sse = (path: Route = '/'): MethodDecorator => custom('elysium:SSE', path);
+export const sse = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'elysium:SSE', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "get" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const get = (path: Route = '/'): MethodDecorator => custom('GET', path);
+export const get = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'GET', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "post" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const post = (path: Route = '/'): MethodDecorator => custom('POST', path);
+export const post = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'POST', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "put" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const put = (path: Route = '/'): MethodDecorator => custom('PUT', path);
+export const put = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'PUT', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "delete" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const del = (path: Route = '/'): MethodDecorator => custom('DELETE', path);
+export const del = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'DELETE', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "patch" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const patch = (path: Route = '/'): MethodDecorator => custom('PATCH', path);
+export const patch = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'PATCH', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "head" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const head = (path: Route = '/'): MethodDecorator => custom('HEAD', path);
+export const head = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'HEAD', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "options" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const options = (path: Route = '/'): MethodDecorator => custom('OPTIONS', path);
+export const options = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'OPTIONS', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP "trace" request handler.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const trace = (path: Route = '/'): MethodDecorator => custom('TRACE', path);
+export const trace = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	const { path = '/', response, operationId, description } = props ?? {};
+	return custom({ method: 'TRACE', path, response, operationId, description });
+};
 
 /**
  * Marks a method as an HTTP request handler with a custom method.
  * @author Axel Nana <axel.nana@workbud.com>
  * @param method The HTTP method.
  * @param path The path of the HTTP route.
+ * @param schema The schema of the response body.
  */
-export const custom = (method: HTTPMethod, path: Route = '/'): MethodDecorator => {
+export const custom = ({
+	path = '/',
+	response,
+	method,
+	operationId,
+	description
+}: RequestHandlerDecoratorProps & { method: HTTPMethod }): MethodDecorator => {
 	return function (target, propertyKey, descriptor) {
 		process.nextTick(() => {
 			registerHttpRequestHandler({
@@ -389,12 +510,19 @@ export const custom = (method: HTTPMethod, path: Route = '/'): MethodDecorator =
 				method,
 				handler: descriptor.value as HttpRequestHandler,
 				target,
-				propertyKey
+				propertyKey,
+				response,
+				operationId,
+				description
 			});
 		});
 	};
 };
 
+/**
+ * Marks a method as the callback for the request handler.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
 export const onRequest = (): MethodDecorator => {
 	return function (target, propertyKey, descriptor) {
 		const metadata = Reflect.getMetadata('http:onRequest', target.constructor) ?? {};

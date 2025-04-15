@@ -5,9 +5,10 @@ import type { Context } from './core/http';
 import type { WampRegistrationHandlerArgs } from './core/wamp';
 import type { WS, WSError } from './core/websocket';
 
-import { integer, pgTable, uuid, varchar } from 'drizzle-orm/pg-core';
+import { boolean, integer, uuid, varchar } from 'drizzle-orm/pg-core';
 import { t } from 'elysia';
 import { isEmpty, uid } from 'radash';
+import { Class } from 'type-fest';
 
 import { app, Application } from './core/app';
 import { Event, on } from './core/event';
@@ -21,6 +22,7 @@ import {
 	HttpControllerScope,
 	onRequest,
 	param,
+	patch,
 	post,
 	query,
 	sse
@@ -40,10 +42,15 @@ import {
 } from './core/wamp';
 import { onClose, onError as onErrorWS, onMessage, onOpen, websocket } from './core/websocket';
 import { Connection } from './db/connection';
+import { Model } from './db/model';
 import { Repository } from './db/repository';
 
 class AuthMiddleware extends Middleware {
 	public onBeforeHandle(ctx: Context) {
+		if (ctx.path.startsWith('/docs')) {
+			return;
+		}
+
 		if (ctx.headers.authorization !== 'Bearer secret') {
 			throw ctx.error(401, { message: 'Unauthorized' });
 		}
@@ -56,19 +63,22 @@ class XServerMiddleware extends Middleware {
 	}
 }
 
-export const usersTable = pgTable('users', {
+class UserModel extends Model('users', {
 	id: uuid().primaryKey().defaultRandom(),
 	name: varchar({ length: 255 }).notNull(),
 	age: integer().notNull(),
-	email: varchar({ length: 255 }).notNull().unique()
-});
+	email: varchar({ length: 255 }).notNull().unique(),
+	is_confirmed: boolean().default(false)
+}) {
+	public static readonly supportTenancy = true;
+}
 
-export type User = typeof usersTable.$inferSelect;
-export type UserInsert = typeof usersTable.$inferInsert;
-export type UserUpdate = Partial<User>;
+export type User = typeof UserModel.$inferSelect;
+export type UserInsert = typeof UserModel.$inferInsert;
+export type UserUpdate = typeof UserModel.$inferUpdate;
 
 @service()
-class UserRepository extends Repository(usersTable) {
+class UserRepository extends Repository(UserModel) {
 	public static readonly connection = 'main';
 }
 
@@ -108,17 +118,15 @@ class UserService {
 	}
 }
 
-const UserCreateSchema = t.Object({
-	name: t.String(),
-	age: t.Number(),
-	email: t.String()
-});
-
 const co = decorate((c: Context) => {
 	return c.controller;
 });
 
-@http({ path: '/users', scope: HttpControllerScope.SERVER })
+const mo = decorate((c: Context) => {
+	return c.module;
+});
+
+@http({ path: '/users', scope: HttpControllerScope.SERVER, tags: ['users'] })
 class UserController {
 	public constructor(
 		@inject('user.service') public readonly userService: UserService,
@@ -126,27 +134,48 @@ class UserController {
 		public id: string = uid(8)
 	) {}
 
-	@get()
-	private list() {
-		return this.userService.userRepository.all();
+	@get({
+		response: t.Array(UserModel.selectSchema),
+		operationId: 'users.list',
+		description: 'Get all users'
+	})
+	private async list(
+		@mo() module: InstanceType<Class<MainModule>>,
+		@context() c: Context
+	): Promise<Array<User>> {
+		return await this.userService.userRepository.all();
 	}
 
-	@del()
+	@del({ response: t.Array(UserModel.selectSchema) })
 	private deleteAll() {
 		return this.userService.userRepository.deleteAll();
 	}
 
-	@get('/:id')
+	@get({ path: '/:id', response: UserModel.selectSchema })
 	private getUser(@param('id') id: string, @context() c: any) {
 		return this.userService.getUser(id);
 	}
 
-	@post()
-	private post(@body(UserCreateSchema) b: UserInsert, @query() q: any, @co() c: UserController) {
-		return this.db.insert(usersTable).values(b).returning();
+	@post({ response: UserModel.selectSchema })
+	private async post(
+		@body(UserModel.createSchema) b: UserInsert,
+		@query() q: any,
+		@co() c: UserController
+	) {
+		const res = await this.db.insert(UserRepository.table).values(b).returning();
+		return res[0];
 	}
 
-	@sse('/:id/notifications')
+	@patch({ response: UserModel.selectSchema })
+	private patch(
+		@body(UserModel.updateSchema) b: UserInsert,
+		@query() q: any,
+		@co() c: UserController
+	) {
+		// return this.db.insert(usersTable).values(b).returning();
+	}
+
+	@sse({ path: '/:id/notifications' })
 	private async sse(@query() q: any, @context() c: Context) {
 		while (isEmpty(this.userService.data)) {
 			await Bun.sleep(1);
@@ -181,7 +210,7 @@ class MessagingServer {
 		this.logger.log('websocket closed');
 	}
 
-	@onMessage(UserCreateSchema)
+	@onMessage(UserModel.createSchema)
 	private onMessage(ws: WS, data: UserInsert) {
 		this.logger.log(`received message: ${JSON.stringify(data)} from ${ws.data.id}`);
 		ws.send(JSON.stringify({ message: `Created user ${data.name}` }));
@@ -194,61 +223,61 @@ class MessagingServer {
 	}
 }
 
-@wamp({ url: 'ws://127.0.0.1:8888', realm: 'realm1' })
-class WampController {
-	public constructor(@inject() public logger: LoggerService) {}
+// @wamp({ url: 'ws://127.0.0.1:8888', realm: 'realm1' })
+// class WampController {
+// 	public constructor(@inject() public logger: LoggerService) {}
 
-	@register('test.topic')
-	private onTestTopic(data: WampRegistrationHandlerArgs) {
-		this.logger.log(`Received data: ${data.argsList}`);
-		return 'Hello from WampController';
-	}
-}
+// 	@register('test.topic')
+// 	private onTestTopic(data: WampRegistrationHandlerArgs) {
+// 		this.logger.log(`Received data: ${data.argsList}`);
+// 		return 'Hello from WampController';
+// 	}
+// }
 
-@wamp({ url: 'ws://127.0.0.1:8888', realm: 'realm1' })
-class WampController2 {
-	public constructor(@inject() public logger: LoggerService) {}
+// @wamp({ url: 'ws://127.0.0.1:8888', realm: 'realm1' })
+// class WampController2 {
+// 	public constructor(@inject() public logger: LoggerService) {}
 
-	@register('test.topic.ext')
-	private onTestTopic(data: WampRegistrationHandlerArgs) {
-		console.log('Received data: ', data);
-		data.result_handler({ argsList: ['Hello from WampController1'], options: { progress: true } });
-		// ...
-		data.result_handler({ argsList: ['Hello from WampController2'], options: { progress: true } });
-		// ...
-		data.result_handler({ argsList: ['Hello from WampController3'], options: { progress: true } });
-	}
+// 	@register('test.topic.ext')
+// 	private onTestTopic(data: WampRegistrationHandlerArgs) {
+// 		console.log('Received data: ', data);
+// 		data.result_handler({ argsList: ['Hello from WampController1'], options: { progress: true } });
+// 		// ...
+// 		data.result_handler({ argsList: ['Hello from WampController2'], options: { progress: true } });
+// 		// ...
+// 		data.result_handler({ argsList: ['Hello from WampController3'], options: { progress: true } });
+// 	}
 
-	@subscribe('test.topic.notify')
-	private onTestTopicNotify(data: WampRegistrationHandlerArgs) {
-		console.log('Received data: ', data);
-	}
+// 	@subscribe('test.topic.notify')
+// 	private onTestTopicNotify(data: WampRegistrationHandlerArgs) {
+// 		console.log('Received data: ', data);
+// 	}
 
-	@onOpenWamp()
-	private onOpen() {
-		this.logger.log('Wamp connection opened');
-	}
+// 	@onOpenWamp()
+// 	private onOpen() {
+// 		this.logger.log('Wamp connection opened');
+// 	}
 
-	@onCloseWamp()
-	private onClose() {
-		this.logger.log('Wamp connection closed');
-	}
+// 	@onCloseWamp()
+// 	private onClose() {
+// 		this.logger.log('Wamp connection closed');
+// 	}
 
-	@onError()
-	private onError() {
-		this.logger.error('Wamp connection error');
-	}
+// 	@onError()
+// 	private onError() {
+// 		this.logger.error('Wamp connection error');
+// 	}
 
-	@onReconnect()
-	private onReconnect() {
-		this.logger.log('Wamp reconnecting');
-	}
+// 	@onReconnect()
+// 	private onReconnect() {
+// 		this.logger.log('Wamp reconnecting');
+// 	}
 
-	@onReconnectSuccess()
-	private onReconnectSuccess() {
-		this.logger.log('Wamp reconnected');
-	}
-}
+// 	@onReconnectSuccess()
+// 	private onReconnectSuccess() {
+// 		this.logger.log('Wamp reconnected');
+// 	}
+// }
 
 @module({ controllers: [UserController, MessagingServer] })
 class MainModule extends Module {
@@ -264,13 +293,28 @@ class MainModule extends Module {
 @middleware(XServerMiddleware, AuthMiddleware)
 @app({
 	modules: [MainModule],
-	database: { default: 'main', connections: { main: { connection: process.env.DATABASE_URL! } } }
+	database: {
+		default: 'main',
+		connections: {
+			main: { connection: process.env.DATABASE_URL! }
+		}
+	},
+	swagger: {
+		path: '/docs',
+		documentation: {
+			info: {
+				title: 'Elysium',
+				description: 'Elysium API Documentation',
+				version: '1.0.0'
+			}
+		}
+	}
 })
 class App extends Application {
 	public constructor() {
 		super({
 			name: App.name,
-			debug: true
+			debug: false
 		});
 	}
 }
@@ -279,8 +323,8 @@ Event.on('elysium:error', (e: EventData<Error>) => {
 	console.error('Fuck', JSON.stringify(e));
 });
 
-setInterval(() => {
-	Event.emit('user:add', { id: uid(8), name: `User ${uid(8)}` });
-}, 1000);
+// setInterval(() => {
+// Event.emit('user:add', { id: uid(8), name: `User ${uid(8)}` });
+// }, 1000);
 
 await new App().start();
