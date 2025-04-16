@@ -34,6 +34,12 @@ export type DatabaseConnection = BunSQLDatabase<Record<string, never>> & {
 };
 
 export namespace Database {
+	/**
+	 * Creates a service name for a database connection.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the connection.
+	 * @returns A service name for the connection.
+	 */
 	const getConnectionName = (name: string) => {
 		return `db.connection.${name}`;
 	};

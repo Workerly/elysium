@@ -15,6 +15,7 @@ import { Database } from './database';
 import { Event } from './event';
 import { Context, Singleton } from './http';
 import { applyMiddlewares } from './middleware';
+import { Redis, RedisConnectionProps } from './redis';
 import { Service } from './service';
 import { Symbols } from './utils';
 
@@ -51,6 +52,21 @@ export type AppProps = {
 		 * The list of connections.
 		 */
 		connections: Record<string, DatabaseConnectionProps>;
+	};
+
+	/**
+	 * The redis configuration for the app.
+	 */
+	redis?: {
+		/**
+		 * The default connection name.
+		 */
+		default: string;
+
+		/**
+		 * The list of connections.
+		 */
+		connections: Record<string, RedisConnectionProps>;
 	};
 
 	/**
@@ -104,13 +120,23 @@ export abstract class Application {
 	public constructor() {
 		Service.instance('elysium.app', this);
 
-		const { server, debug, database, swagger, modules }: AppProps = Reflect.getMetadata(
+		const { server, debug, database, redis, swagger, modules }: AppProps = Reflect.getMetadata(
 			Symbols.app,
 			this.constructor
 		)!;
 
 		this.#elysia = new Elysia(server);
 		this.#debug = debug ?? false;
+
+		if (redis) {
+			for (const connectionName in redis.connections) {
+				Redis.registerConnection(connectionName, redis.connections[connectionName]);
+			}
+
+			if (Redis.connectionExists(redis.default)) {
+				Redis.setDefaultConnection(redis.default);
+			}
+		}
 
 		if (database) {
 			for (const connectionName in database.connections) {
@@ -122,7 +148,7 @@ export abstract class Application {
 			}
 		}
 
-		this.#appContextStorage.enterWith(new Map());
+		Event.emit('elysium:app:before-init', this, this);
 
 		this.#elysia
 			.onRequest((c: PreContext<Singleton>) => {
@@ -178,6 +204,8 @@ export abstract class Application {
 			this.#elysia.use(plugin(module));
 			module.afterRegister();
 		}
+
+		Event.emit('elysium:app:after-init', this, this);
 	}
 
 	/**

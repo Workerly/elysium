@@ -159,6 +159,19 @@ export namespace Event {
 	};
 
 	/**
+	 * Registers an event listener for the specified event that listens for the event only once.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param event The event name.
+	 * @param handler The event handler function.
+	 */
+	export const once = <TData, TSource = any>(
+		event: string,
+		handler: EventHandler<TData, TSource>
+	): void => {
+		EventBus.instance.once(event, handler);
+	};
+
+	/**
 	 * Removes all event listeners for the specified event.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param event The event name.
