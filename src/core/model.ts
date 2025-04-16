@@ -5,7 +5,8 @@ import type { TSchema } from 'elysia';
 import { getTableConfig, pgSchema, pgTable } from 'drizzle-orm/pg-core';
 import { t } from 'elysia';
 
-import { Service } from '../core/service';
+import { AppContext, Application } from './app';
+import { Service } from './service';
 
 /**
  * Creates a validation schema from a Drizzle table.
@@ -242,9 +243,8 @@ export namespace Tenancy {
 	 * @returns The name of the current tenant, or `null` if no tenant is set.
 	 */
 	export const getCurrentTenant = (): string | null => {
-		return (Service.get<AsyncLocalStorage<Map<string, unknown>>>('elysium.app.context')
-			?.getStore()
-			?.get('tenant') ?? null) as string | null;
+		const store = Application.context.getStore();
+		return (store?.get('tenant') ?? null) as string | null;
 	};
 
 	/**

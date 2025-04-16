@@ -1,7 +1,7 @@
 import type { ElysiaSwaggerConfig } from '@elysiajs/swagger';
 import type { ElysiaConfig, ErrorContext, PreContext } from 'elysia';
 import type { Class } from 'type-fest';
-import type { ConnectionProps } from '../db/connection';
+import type { DatabaseConnectionProps } from './database';
 import type { Module } from './module';
 import type { Route } from './utils';
 
@@ -11,7 +11,7 @@ import { swagger as swaggerPlugin } from '@elysiajs/swagger';
 import { Elysia } from 'elysia';
 import { assign } from 'radash';
 
-import { Connection } from '../db/connection';
+import { Database } from './database';
 import { Event } from './event';
 import { Context, Singleton } from './http';
 import { applyMiddlewares } from './middleware';
@@ -23,6 +23,16 @@ import { Symbols } from './utils';
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export type AppProps = {
+	/**
+	 * Enables or disables debug mode.
+	 */
+	debug?: boolean;
+
+	/**
+	 * The Elysia server configuration.
+	 */
+	server?: ElysiaConfig<Route>;
+
 	/**
 	 * The list of modules provided the app.
 	 */
@@ -40,7 +50,7 @@ export type AppProps = {
 		/**
 		 * The list of connections.
 		 */
-		connections: Record<string, ConnectionProps>;
+		connections: Record<string, DatabaseConnectionProps>;
 	};
 
 	/**
@@ -62,6 +72,8 @@ export const app = (props: AppProps): ClassDecorator => {
 	};
 };
 
+export type AppContext = AsyncLocalStorage<Map<'tenant' | 'http:context' | 'db:tx', unknown>>;
+
 /**
  * Base class for the application main entry.
  * @author Axel Nana <axel.nana@workbud.com>
@@ -69,24 +81,57 @@ export const app = (props: AppProps): ClassDecorator => {
 export abstract class Application {
 	#elysia: Elysia<Route>;
 	#debug: boolean;
-	readonly #appContextStorage: AsyncLocalStorage<Map<string, unknown>> = new AsyncLocalStorage();
+	readonly #appContextStorage: AppContext = new AsyncLocalStorage();
+
+	/**
+	 * Gets the running application instance.
+	 */
+	public static get instance(): Application {
+		return Service.get<Application>('elysium.app')!;
+	}
+
+	/**
+	 * Gets the application context shared between asynchronous operations.
+	 */
+	public static get context(): AppContext {
+		return Application.instance.#appContextStorage;
+	}
 
 	/**
 	 * Creates a new instance of the application.
 	 * @param config The Elysia configuration.
 	 */
-	constructor(config: ElysiaConfig<Route> & { debug?: boolean } = {}) {
-		this.#elysia = new Elysia(config);
-		this.#debug = config.debug ?? false;
+	public constructor() {
+		Service.instance('elysium.app', this);
+
+		const { server, debug, database, swagger, modules }: AppProps = Reflect.getMetadata(
+			Symbols.app,
+			this.constructor
+		)!;
+
+		this.#elysia = new Elysia(server);
+		this.#debug = debug ?? false;
+
+		if (database) {
+			for (const connectionName in database.connections) {
+				Database.registerConnection(connectionName, database.connections[connectionName]);
+			}
+
+			if (Database.connectionExists(database.default)) {
+				Database.setDefaultConnection(database.default);
+			}
+		}
+
+		this.#appContextStorage.enterWith(new Map());
 
 		this.#elysia
 			.onRequest((c: PreContext<Singleton>) => {
-				c.tenant = c.request.headers.get('x-tenant-id');
+				c.tenant = c.request.headers.get('x-tenant-id') ?? 'public';
 
 				this.#appContextStorage.enterWith(
 					new Map([
 						['tenant', c.tenant],
-						['context', c]
+						['http:context', c]
 					])
 				);
 
@@ -110,8 +155,29 @@ export abstract class Application {
 				this.#appContextStorage.disable();
 			});
 
-		Service.instance('elysium.app', this);
-		Service.instance('elysium.app.context', this.#appContextStorage);
+		if (swagger) {
+			this.#elysia.use(swaggerPlugin(swagger));
+		}
+
+		const middlewares = Reflect.getMetadata(Symbols.middlewares, this.constructor) ?? [];
+		applyMiddlewares(middlewares, this.#elysia);
+
+		for (const moduleClass of modules!) {
+			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, moduleClass);
+			if (plugin === undefined) {
+				// TODO: Use the logger service here
+				console.error(
+					`Invalid module class ${moduleClass.name} registered in app ${this.constructor.name}. Ensure that you used the @module() decorator on the module.`
+				);
+				process.exit(1);
+			}
+
+			const module = Service.bind(moduleClass);
+
+			module.beforeRegister();
+			this.#elysia.use(plugin(module));
+			module.afterRegister();
+		}
 	}
 
 	/**
@@ -162,45 +228,6 @@ export abstract class Application {
 	 * @param port The port to listen on.
 	 */
 	public async start(port: number = 3000): Promise<void> {
-		const { modules, database, swagger }: AppProps = Reflect.getMetadata(
-			Symbols.app,
-			this.constructor
-		)!;
-
-		if (database) {
-			for (const connectionName in database.connections) {
-				Connection.register(connectionName, database.connections[connectionName]);
-			}
-
-			if (Connection.exists(database.default)) {
-				Connection.setDefault(database.default);
-			}
-		}
-
-		if (swagger) {
-			this.#elysia.use(swaggerPlugin(swagger));
-		}
-
-		const middlewares = Reflect.getMetadata(Symbols.middlewares, this.constructor) ?? [];
-		applyMiddlewares(middlewares, this.#elysia);
-
-		for (const moduleClass of modules!) {
-			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, moduleClass);
-			if (plugin === undefined) {
-				// TODO: Use the logger service here
-				console.error(
-					`Invalid module class ${moduleClass.name} registered in app ${this.constructor.name}. Ensure that you used the @module() decorator on the module.`
-				);
-				process.exit(1);
-			}
-
-			const module = Service.bind(moduleClass);
-
-			module.beforeRegister();
-			this.#elysia.use(await plugin(module));
-			module.afterRegister();
-		}
-
 		this.#elysia.listen(port);
 	}
 }

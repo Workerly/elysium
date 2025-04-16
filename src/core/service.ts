@@ -82,7 +82,7 @@ type FactoryFn<T> = () => T extends void ? never : T;
  * @param value The value to check.
  * @returns `true` if the value is a class, `false` otherwise.
  */
-const isClass = <T>(value: Class<T> | FactoryFn<T>): value is Class<T> => {
+const isClass = <T, V>(value: Class<T> | V): value is Class<T> => {
 	return typeof value === 'function' && value.prototype && value.prototype.constructor === value;
 };
 
@@ -233,14 +233,32 @@ export namespace Service {
 	/**
 	 * Binds a service to the container and sets it as a factory.
 	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name A name for the service.
+	 * @param factory The factory function used to instantiate the service.
+	 */
+	export function factory<T>(name: string, factory: FactoryFn<T>): T;
+
+	/**
+	 * Binds a service to the container and sets it as a factory.
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param service The service class to bind.
 	 * @param name An optional name for the service. If not set, the name of the service class is used instead.
 	 */
-	export const factory = <T>(
-		service: TypedServiceClass<T> | FactoryFn<T>,
-		name: typeof service extends FactoryFn<T> ? string : string | undefined
-	): T => {
-		const serviceName = name ?? service.name;
+	export function factory<T>(service: TypedServiceClass<T>, name?: string): T;
+
+	/**
+	 * Binds a service to the container and sets it as a factory.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param serviceOrName The service class to bind or its name.
+	 * @param nameOrFactory The service name or a factory function.
+	 */
+	export function factory<T>(
+		serviceOrName: TypedServiceClass<T> | string,
+		nameOrFactory?: FactoryFn<T> | string
+	): T {
+		const serviceName = isString(serviceOrName)
+			? serviceOrName
+			: ((nameOrFactory as string | undefined) ?? serviceOrName.name);
 
 		if (exists(serviceName)) {
 			// TODO: Use the logger service here
@@ -258,7 +276,7 @@ export namespace Service {
 		});
 
 		return factory();
-	};
+	}
 
 	/**
 	 * Binds a service's instance to the container.

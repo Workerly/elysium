@@ -13,6 +13,8 @@ import type { Route } from './utils';
 import { Elysia, t } from 'elysia';
 import { assign, isEmpty, objectify } from 'radash';
 
+import { Application } from './app';
+import { Database } from './database';
 import { applyMiddlewares, executeMiddlewareChain, Middleware } from './middleware';
 import { Service } from './service';
 import { nextTick, Symbols } from './utils';
@@ -282,13 +284,22 @@ export const http = (props: HttpProps) => {
 				route.method = isSSE ? 'GET' : route.method;
 
 				const getHandler = () => {
+					const initTransactedHandler = (c: Context) => {
+						const controller = c.controller;
+						return async function (...args: unknown[]) {
+							return await Database.getDefaultConnection().transaction(async (tx) => {
+								Application.context.getStore()?.set('db:tx', tx);
+								return await route.handler.call(controller, ...args);
+							});
+						};
+					};
+
 					if (isGenerator) {
 						return async function* (c: Context) {
-							const controller = c.controller;
-							const handler = route.handler.bind(controller);
+							const handler = initTransactedHandler(c);
 
 							try {
-								for await (const eachValue of handler(...(await getParameters(c))) as any[])
+								for await (const eachValue of handler(...(await getParameters(c))) as any)
 									yield eachValue;
 							} catch (error: any) {
 								yield error;
@@ -298,8 +309,7 @@ export const http = (props: HttpProps) => {
 
 					if (isSSE) {
 						return async function* (c: Context) {
-							const controller = c.controller;
-							const handler = route.handler.bind(controller);
+							const handler = initTransactedHandler(c);
 
 							c.set.headers['Content-Type'] = 'text/event-stream';
 							c.set.headers['Cache-Control'] = 'no-cache';
@@ -313,9 +323,8 @@ export const http = (props: HttpProps) => {
 					}
 
 					return async function (c: Context) {
-						const controller = c.controller;
-						const handler = route.handler.bind(controller);
-						return handler(...(await getParameters(c)));
+						const handler = initTransactedHandler(c);
+						return await handler(...(await getParameters(c)));
 					};
 				};
 

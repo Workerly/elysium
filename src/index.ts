@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 
+import type { DatabaseConnection } from './core/database';
 import type { EventData } from './core/event';
 import type { Context } from './core/http';
-import type { WampRegistrationHandlerArgs } from './core/wamp';
 import type { WS, WSError } from './core/websocket';
 
 import { boolean, integer, uuid, varchar } from 'drizzle-orm/pg-core';
@@ -10,7 +10,7 @@ import { t } from 'elysia';
 import { isEmpty, uid } from 'radash';
 import { Class } from 'type-fest';
 
-import { app, Application } from './core/app';
+import { app, AppContext, Application } from './core/app';
 import { Event, on } from './core/event';
 import {
 	body,
@@ -28,22 +28,11 @@ import {
 	sse
 } from './core/http';
 import { middleware, Middleware } from './core/middleware';
+import { Model } from './core/model';
 import { module, Module } from './core/module';
+import { Repository } from './core/repository';
 import { inject, Service, service, ServiceScope } from './core/service';
-import {
-	onClose as onCloseWamp,
-	onError,
-	onOpen as onOpenWamp,
-	onReconnect,
-	onReconnectSuccess,
-	register,
-	subscribe,
-	wamp
-} from './core/wamp';
 import { onClose, onError as onErrorWS, onMessage, onOpen, websocket } from './core/websocket';
-import { Connection } from './db/connection';
-import { Model } from './db/model';
-import { Repository } from './db/repository';
 
 class AuthMiddleware extends Middleware {
 	public onBeforeHandle(ctx: Context) {
@@ -73,19 +62,17 @@ class UserModel extends Model('users', {
 	public static readonly supportTenancy = true;
 }
 
-export type User = typeof UserModel.$inferSelect;
-export type UserInsert = typeof UserModel.$inferInsert;
-export type UserUpdate = typeof UserModel.$inferUpdate;
+type User = typeof UserModel.$inferSelect;
+type UserInsert = typeof UserModel.$inferInsert;
+type UserUpdate = typeof UserModel.$inferUpdate;
 
 @service()
-class UserRepository extends Repository(UserModel) {
-	public static readonly connection = 'main';
-}
+class UserRepository extends Repository(UserModel) {}
 
 @service({ scope: ServiceScope.FACTORY })
 class LoggerService {
-	public log(msg: string) {
-		console.log(msg);
+	public log(...msg: any[]) {
+		console.log(...msg);
 	}
 
 	public error(msg: string) {
@@ -130,7 +117,7 @@ const mo = decorate((c: Context) => {
 class UserController {
 	public constructor(
 		@inject('user.service') public readonly userService: UserService,
-		@inject('db.connection.main') public readonly db: Connection,
+		@inject('db.connection.main') public readonly db: DatabaseConnection,
 		public id: string = uid(8)
 	) {}
 
@@ -141,8 +128,10 @@ class UserController {
 	})
 	private async list(
 		@mo() module: InstanceType<Class<MainModule>>,
+		@inject() logger: LoggerService,
 		@context() c: Context
 	): Promise<Array<User>> {
+		// logger.log('ctx', App.context.getStore());
 		return await this.userService.userRepository.all();
 	}
 
@@ -152,8 +141,9 @@ class UserController {
 	}
 
 	@get({ path: '/:id', response: UserModel.selectSchema })
-	private getUser(@param('id') id: string, @context() c: any) {
-		return this.userService.getUser(id);
+	private async getUser(@param('id', t.String({ format: 'uuid' })) id: string, @context() c: any) {
+		const user = await this.userService.getUser(id);
+		return !!user ? user : c.error(404, { message: 'User not found' });
 	}
 
 	@post({ response: UserModel.selectSchema })
@@ -192,7 +182,7 @@ class UserController {
 
 	@onRequest()
 	private onRequest(c: Context) {
-		this.userService.logger.log(`request received: ${c.request.method} ${c.path}`);
+		this.userService.logger.log(c);
 	}
 }
 
@@ -290,9 +280,13 @@ class MainModule extends Module {
 	}
 }
 
-@middleware(XServerMiddleware, AuthMiddleware)
+@middleware(XServerMiddleware)
 @app({
 	modules: [MainModule],
+	server: {
+		name: App.name
+	},
+	debug: false,
 	database: {
 		default: 'main',
 		connections: {
@@ -310,21 +304,17 @@ class MainModule extends Module {
 		}
 	}
 })
-class App extends Application {
-	public constructor() {
-		super({
-			name: App.name,
-			debug: false
-		});
-	}
-}
+class App extends Application {}
 
 Event.on('elysium:error', (e: EventData<Error>) => {
-	console.error('Fuck', JSON.stringify(e));
+	// console.error('Fuck', JSON.stringify(e));
 });
 
-// setInterval(() => {
-// Event.emit('user:add', { id: uid(8), name: `User ${uid(8)}` });
-// }, 1000);
+setInterval(() => {
+	Event.emit('user:add', { id: uid(8), name: `User ${uid(8)}` });
+}, 1000);
 
 await new App().start();
+
+const response = await fetch('http://localhost:3000/users');
+console.log(await response.text());

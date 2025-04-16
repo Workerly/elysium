@@ -3,36 +3,37 @@ import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 
 import { drizzle } from 'drizzle-orm/bun-sql';
 
-import { Service } from '../core/service';
+import { Service } from './service';
 
 /**
  * Properties used to create a new database connection.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type ConnectionProps<TSchema extends Record<string, unknown> = Record<string, never>> =
-	DrizzleConfig<TSchema> &
-		(
-			| {
-					connection:
-						| string
-						| ({
-								url?: string;
-						  } & Bun.SQLOptions);
-			  }
-			| {
-					client: Bun.SQL;
-			  }
-		);
+export type DatabaseConnectionProps<
+	TSchema extends Record<string, unknown> = Record<string, never>
+> = DrizzleConfig<TSchema> &
+	(
+		| {
+				connection:
+					| string
+					| ({
+							url?: string;
+					  } & Bun.SQLOptions);
+		  }
+		| {
+				client: Bun.SQL;
+		  }
+	);
 
 /**
  * A database connection.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type Connection = BunSQLDatabase<Record<string, never>> & {
+export type DatabaseConnection = BunSQLDatabase<Record<string, never>> & {
 	$client: Bun.SQL;
 };
 
-export namespace Connection {
+export namespace Database {
 	const getConnectionName = (name: string) => {
 		return `db.connection.${name}`;
 	};
@@ -43,7 +44,7 @@ export namespace Connection {
 	 * @param name The connection name.
 	 * @returns The connection with the given name.
 	 */
-	export const get = (name: string) => {
+	export const getConnection = (name: string) => {
 		if (!Service.exists(getConnectionName(name))) {
 			// TODO: Use logger service here
 			console.error(
@@ -52,7 +53,7 @@ export namespace Connection {
 			process.exit(1);
 		}
 
-		return Service.get<Connection>(getConnectionName(name))!;
+		return Service.get<DatabaseConnection>(getConnectionName(name))!;
 	};
 
 	/**
@@ -66,7 +67,7 @@ export namespace Connection {
 	 * @param config The connection properties.
 	 * @returns The newly created and registered connection.
 	 */
-	export const register = (name: string, config: ConnectionProps) => {
+	export const registerConnection = (name: string, config: DatabaseConnectionProps) => {
 		if (Service.exists(getConnectionName(name))) {
 			// TODO: Use logger service here
 			console.error(`A connection with the name ${name} has already been registered.`);
@@ -82,7 +83,7 @@ export namespace Connection {
 	 * @param name The name of the connection to check.
 	 * @returns `true` if the connection exists, `false` otherwise.
 	 */
-	export const exists = (name: string) => {
+	export const connectionExists = (name: string) => {
 		return Service.exists(getConnectionName(name));
 	};
 
@@ -91,8 +92,8 @@ export namespace Connection {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @returns The default connection.
 	 */
-	export const getDefault = () => {
-		return get('default');
+	export const getDefaultConnection = () => {
+		return getConnection('default');
 	};
 
 	/**
@@ -101,9 +102,9 @@ export namespace Connection {
 	 * @param name The name of the connection to set as default.
 	 * @returns The default connection.
 	 */
-	export const setDefault = (name: string) => {
+	export const setDefaultConnection = (name: string) => {
 		const serviceName = getConnectionName('default');
 		Service.remove(serviceName);
-		return Service.instance(serviceName, get(name));
+		return Service.instance(serviceName, getConnection(name));
 	};
 }

@@ -1,17 +1,15 @@
 // @ts-nocheck
 
-import type {
-	AnyPgTable,
-	PgColumnBuilderBase,
-	PgTableWithColumns,
-	TableConfig
-} from 'drizzle-orm/pg-core';
+import type { PgColumnBuilderBase } from 'drizzle-orm/pg-core';
+import type { DatabaseConnection } from './database';
+import type { ModelClass } from './model';
 
 import { eq } from 'drizzle-orm';
 import { pgTable } from 'drizzle-orm/pg-core';
 
-import { Connection } from './connection';
-import { ModelClass, Tenancy } from './model';
+import { Application } from './app';
+import { Database } from './database';
+import { Tenancy } from './model';
 
 /**
  * Database's primary column type.
@@ -161,10 +159,15 @@ export const Repository = <
 		/**
 		 * The database connection used by this repository.
 		 */
-		public get db() {
-			return Connection.get(
-				(this.constructor as RepositoryClass<TModel, TId, TColumnsMap>).connection
-			);
+		public get db(): DatabaseConnection {
+			const connection = (this.constructor as RepositoryClass<TModel, TId, TColumnsMap>).connection;
+			let db: DatabaseConnection | null = null;
+
+			if (connection === 'default') {
+				db = (Application.context.getStore()?.get('db:tx') as DatabaseConnection) ?? null;
+			}
+
+			return db ?? Database.getConnection(connection);
 		}
 
 		/**
