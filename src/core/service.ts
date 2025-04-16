@@ -158,15 +158,15 @@ export const service = (options?: ServiceProps) => {
  */
 export const inject = (name?: string): ParameterDecorator => {
 	return function (target, propertyKey, parameterIndex) {
-		const services = Reflect.getMetadata(Symbols.services, target) ?? [];
-		const types = Reflect.getMetadata('design:paramtypes', target) ?? [];
+		const services = Reflect.getMetadata(Symbols.services, target, propertyKey!) ?? [];
+		const types = Reflect.getMetadata('design:paramtypes', target, propertyKey!) ?? [];
 
 		services.push({
 			name: name ?? types[parameterIndex].name,
 			index: parameterIndex
 		});
 
-		Reflect.defineMetadata(Symbols.services, services, target);
+		Reflect.defineMetadata(Symbols.services, services, target, propertyKey!);
 	};
 };
 
@@ -267,7 +267,7 @@ export namespace Service {
 		}
 
 		const factory = () => {
-			return !isClass(service) ? service() : make(service);
+			return isClass(serviceOrName) ? make(serviceOrName) : (nameOrFactory as FactoryFn<T>)();
 		};
 
 		servicesRegistry.set(serviceName, {

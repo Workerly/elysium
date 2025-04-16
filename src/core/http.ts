@@ -89,6 +89,11 @@ type HttpRequestHandlerMetadata = {
 	 * The OpenAPI's description for the handler.
 	 */
 	description?: string;
+
+	/**
+	 * The list of services injected in the handler.
+	 */
+	services: Array<{ name: string; index: number }>;
 };
 
 /**
@@ -142,6 +147,7 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 		Reflect.getMetadata('http:customDecorators', props.target, props.propertyKey) ?? [];
 	const middlewares =
 		Reflect.getMetadata(Symbols.middlewares, props.target, props.propertyKey) ?? [];
+	const services = Reflect.getMetadata(Symbols.services, props.target, props.propertyKey) ?? [];
 
 	const { path, method, handler, target, response, operationId, description } = props;
 
@@ -160,7 +166,8 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 		middlewares,
 		response,
 		operationId,
-		description
+		description,
+		services
 	});
 
 	Reflect.defineMetadata(Symbols.http, metadata, target.constructor);
@@ -275,6 +282,12 @@ export const http = (props: HttpProps) => {
 						}
 					}
 
+					if (!isEmpty(route.services)) {
+						for (const service of route.services) {
+							parameters[service.index] = Service.get(service.name);
+						}
+					}
+
 					return parameters;
 				};
 
@@ -286,10 +299,16 @@ export const http = (props: HttpProps) => {
 				const getHandler = () => {
 					const initTransactedHandler = (c: Context) => {
 						const controller = c.controller;
-						return async function (...args: unknown[]) {
-							return await Database.getDefaultConnection().transaction(async (tx) => {
-								Application.context.getStore()?.set('db:tx', tx);
-								return await route.handler.call(controller, ...args);
+						return function (...args: unknown[]) {
+							return Database.getDefaultConnection().transaction((tx) => {
+								return Application.context.run(
+									new Map([
+										['tenant', c.tenant],
+										['http:context', c],
+										['db:tx', tx]
+									]),
+									() => route.handler.call(controller, ...args) as Promise<unknown>
+								);
 							});
 						};
 					};
