@@ -11,6 +11,7 @@ import { isEmpty, uid } from 'radash';
 import { Class } from 'type-fest';
 
 import { app, AppContext, Application } from './core/app';
+import { Cache } from './core/cache';
 import { Event, on } from './core/event';
 import {
 	body,
@@ -132,7 +133,13 @@ class UserController {
 		@context() c: Context
 	): Promise<Array<User>> {
 		// logger.log('ctx', App.context.getStore());
-		return await this.userService.userRepository.all();
+		let list = await Cache.memory.get<Array<User>>(`${c.tenant}:users:list`);
+		if (!list) {
+			list = await this.userService.userRepository.all();
+			Cache.memory.set(`${c.tenant}:users:list`, list);
+		}
+
+		return list;
 	}
 
 	@del({ response: t.Array(UserModel.selectSchema) })
@@ -182,7 +189,7 @@ class UserController {
 
 	@onRequest()
 	private onRequest(c: Context) {
-		this.userService.logger.log(c);
+		// this.userService.logger.log(c);
 	}
 }
 
@@ -293,6 +300,12 @@ class MainModule extends Module {
 			main: { connection: process.env.DATABASE_URL! }
 		}
 	},
+	redis: {
+		default: 'cache',
+		connections: {
+			cache: { url: process.env.REDIS_URL!, connectionTimeout: 0 }
+		}
+	},
 	swagger: {
 		path: '/docs',
 		documentation: {
@@ -307,7 +320,7 @@ class MainModule extends Module {
 class App extends Application {}
 
 Event.on('elysium:error', (e: EventData<Error>) => {
-	// console.error('Fuck', JSON.stringify(e));
+	console.error('Fuck', JSON.stringify(e));
 });
 
 setInterval(() => {
@@ -315,6 +328,3 @@ setInterval(() => {
 }, 1000);
 
 await new App().start();
-
-const response = await fetch('http://localhost:3000/users');
-console.log(await response.text());

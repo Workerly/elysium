@@ -3,6 +3,7 @@ import type { Class } from 'type-fest';
 import type { Context } from './http';
 import type { Route } from './utils';
 
+import { Application } from './app';
 import { Service } from './service';
 import { Symbols } from './utils';
 
@@ -13,21 +14,29 @@ import { Symbols } from './utils';
  * @param context The context to pass to each middleware.
  * @param method The method to call on each middleware.
  */
-export const executeMiddlewareChain = async <T extends Context>(
+export const executeMiddlewareChain = <T extends Context>(
 	middlewares: Middleware[],
 	context: T,
 	method: keyof Middleware
 ): Promise<any> => {
-	for (const middleware of middlewares) {
-		try {
-			const result = await middleware[method](context);
-			if (result !== undefined) {
-				return result; // Stop the chain if middleware returns a value
+	return Application.context.run(
+		new Map([
+			['tenant', context.tenant],
+			['http:context', context]
+		]),
+		async () => {
+			for (const middleware of middlewares) {
+				try {
+					const result = await middleware[method](context);
+					if (result !== undefined) {
+						return result; // Stop the chain if middleware returns a value
+					}
+				} catch (error) {
+					throw error; // Stop the chain and propagate the error
+				}
 			}
-		} catch (error) {
-			throw error; // Stop the chain and propagate the error
 		}
-	}
+	);
 };
 
 /**

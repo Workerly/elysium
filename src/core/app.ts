@@ -154,13 +154,6 @@ export abstract class Application {
 			.onRequest((c: PreContext<Singleton>) => {
 				c.tenant = c.request.headers.get('x-tenant-id') ?? 'public';
 
-				this.#appContextStorage.enterWith(
-					new Map([
-						['tenant', c.tenant],
-						['http:context', c]
-					])
-				);
-
 				if (this.debug) {
 					// TODO: Use the logger service here
 					console.log(c.request.method, c.request.url);
