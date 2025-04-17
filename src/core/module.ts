@@ -1,10 +1,11 @@
 import type { Class } from 'type-fest';
+import type { Route } from './utils';
 
-import Elysia from 'elysia';
+import { Elysia } from 'elysia';
 import { assign } from 'radash';
 
 import { applyMiddlewares } from './middleware';
-import { nextTick, Route, Symbols } from './utils';
+import { nextTick, Symbols } from './utils';
 
 /**
  * Properties required when declaring a module using the `@module()` decorator.
@@ -15,18 +16,6 @@ export type ModuleProps = {
 	 * The list of controllers provided by the module.
 	 */
 	controllers?: Class<any>[];
-
-	/**
-	 * The list of middlewares in the module. Those middlewares will run for each
-	 * endpoint of each controller in the module.
-	 *
-	 * If you want to apply a middleware only for a specific controller, use the
-	 * `@middleware()` decorator on that controller instead.
-	 *
-	 * If you need to apply the middleware on a specific endpoint, add the `@middleware()`
-	 * on the endpoint's method handler instead.
-	 */
-	middlewares?: Class<any>[];
 };
 
 /**
@@ -41,7 +30,7 @@ export const module = (options: ModuleProps) => {
 			console.log(`Registering module ${target.name}`);
 			await nextTick();
 
-			const props = assign({ controllers: [], middlewares: [] }, options) as Required<ModuleProps>;
+			const props = assign({ controllers: [] }, options) as Required<ModuleProps>;
 
 			const plugin: Elysia<Route> = new Elysia({ name: target.name });
 			plugin.decorate('module', m);
@@ -69,6 +58,12 @@ export const module = (options: ModuleProps) => {
 		Reflect.defineMetadata(Symbols.elysiaPlugin, handleModule, target);
 	};
 };
+
+/**
+ * Type for a module class.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type ModuleClass = Class<Module>;
 
 /**
  * Base class for all modules.

@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 import type { PgColumnBuilderBase } from 'drizzle-orm/pg-core';
+import type { Class } from 'type-fest';
 import type { DatabaseConnection } from './database';
 import type { ModelClass } from './model';
 
@@ -97,7 +98,7 @@ export type RepositoryClass<
 	>
 		? TColumnsMap
 		: Record<string, PgColumnBuilderBase>
-> = {
+> = Class<RepositoryInterface<TModel, TId, TColumnsMap>> & {
 	/**
 	 * The drizzle's table schema wrapped by the repository.
 	 */
@@ -109,13 +110,6 @@ export type RepositoryClass<
 	 * Update this value to change the database connection used by this repository.
 	 */
 	readonly connection: string;
-
-	/**
-	 * Creates a new instance of the repository.
-	 * @param args The arguments to pass to the constructor.
-	 * @returns A new instance of the repository.
-	 */
-	new (...args: unknown[]): RepositoryInterface<TModel, TId, TColumnsMap>;
 };
 
 /**

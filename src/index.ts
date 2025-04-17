@@ -12,6 +12,7 @@ import { Class } from 'type-fest';
 
 import { app, AppContext, Application } from './core/app';
 import { Cache } from './core/cache';
+import { arg, Command } from './core/command';
 import { Event, on } from './core/event';
 import {
 	body,
@@ -287,11 +288,28 @@ class MainModule extends Module {
 	}
 }
 
+class TestCommand extends Command {
+	public static readonly command = 'app:test';
+	public static readonly description = 'Test command';
+
+	@arg('name', { description: 'Name of the user', required: true })
+	private name: string = '';
+
+	@arg('age', { description: 'Age of the user', required: true, default: 28 })
+	private age: number = 0;
+
+	public async run() {
+		this.write(`Hello, ${this.name}! You are ${this.age} years old.`);
+	}
+}
+
 @middleware(XServerMiddleware)
 @app({
 	modules: [MainModule],
+	commands: [TestCommand],
 	server: {
-		name: App.name
+		name: App.name,
+		port: parseInt(process.env.PORT!, 10) || 3000
 	},
 	debug: false,
 	database: {
@@ -317,7 +335,7 @@ class MainModule extends Module {
 		}
 	}
 })
-class App extends Application {}
+export class App extends Application {}
 
 Event.on('elysium:error', (e: EventData<Error>) => {
 	console.error('Fuck', JSON.stringify(e));
@@ -326,5 +344,3 @@ Event.on('elysium:error', (e: EventData<Error>) => {
 setInterval(() => {
 	Event.emit('user:add', { id: uid(8), name: `User ${uid(8)}` });
 }, 1000);
-
-await new App().start();

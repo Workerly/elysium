@@ -1,0 +1,8 @@
+#!/usr/bin/env bun
+
+import 'reflect-metadata';
+
+import { App } from './src';
+
+// Start the application
+new App();
