@@ -251,24 +251,17 @@ export abstract class Application extends InteractsWithConsole {
 		const action = argv[0];
 
 		if (!action) {
-			this.describe();
+			this.commandDescribe();
 		} else {
 			const { commands } = Reflect.getMetadata(Symbols.app, this.constructor) as AppProps;
 
-			const showAvailableCommands = () => {
-				this.write(this.bold('Available commands:'));
-				for (const commandClass of commands ?? []) {
-					this.write(`  ${this.format(commandClass.command, ConsoleFormat.MAGENTA)}`);
-				}
-			};
-
 			if (action === 'serve') {
-				return this.serve();
+				return this.commandServe();
 			} else if (action === 'exec') {
 				const command = argv[1];
 				const args = argv.slice(2);
 
-				return this.exec(command, args);
+				return this.commandExec(command, args);
 			} else if (action === 'help') {
 				const command = argv[1];
 
@@ -276,25 +269,25 @@ export abstract class Application extends InteractsWithConsole {
 					const commandClass = commands?.find((commandClass) => commandClass.command === command);
 
 					if (!commandClass) {
-						console.error(`Command <${this.bold(command)}> not found`);
-						this.newLine();
+						console.error(`Command <${command}> not found.`);
 					} else {
-						const commandInstance = new commandClass();
+						const commandInstance = Service.make(commandClass);
 						this.write(await commandInstance.help());
+						process.exit(0);
 					}
 				} else {
 					console.error('No command provided. Usage: styx help <command>');
 					this.newLine();
 				}
 
-				showAvailableCommands();
+				this.commandList();
 			} else if (action === 'list') {
-				showAvailableCommands();
+				this.write(this.bold('Available commands:'));
+				this.commandList();
 			} else {
 				console.error(`Invalid command: ${this.bold(action)}`);
-				this.newLine();
 
-				this.describe();
+				this.commandDescribe();
 			}
 		}
 
@@ -306,7 +299,7 @@ export abstract class Application extends InteractsWithConsole {
 	 * @param command The command to execute.
 	 * @param argv The command line arguments.
 	 */
-	private async exec(command: string, argv: string[]): Promise<void> {
+	private async commandExec(command: string, argv: string[]): Promise<void> {
 		const { commands } = Reflect.getMetadata(Symbols.app, this.constructor) as AppProps;
 
 		// Find the command class
@@ -314,12 +307,13 @@ export abstract class Application extends InteractsWithConsole {
 
 		if (!commandClass) {
 			console.error(`Command ${command} not found`);
+			this.commandList();
 			process.exit(1);
 		}
 
 		try {
 			// Create the command instance
-			const commandInstance = new commandClass();
+			const commandInstance = Service.make(commandClass);
 
 			// Run the command
 			const initialized = await commandInstance.init(...argv);
@@ -341,7 +335,7 @@ export abstract class Application extends InteractsWithConsole {
 	/**
 	 * Start the server on the specified port.
 	 */
-	private async serve(): Promise<void> {
+	private async commandServe(): Promise<void> {
 		const { server, modules } = Reflect.getMetadata(Symbols.app, this.constructor) as AppProps;
 
 		const middlewares = Reflect.getMetadata(Symbols.middlewares, this.constructor) ?? [];
@@ -376,20 +370,46 @@ export abstract class Application extends InteractsWithConsole {
 	/**
 	 * Describes the CLI and available commands.
 	 */
-	private describe() {
-		const [serve, exec, help, list] = ['serve', 'exec', 'help', 'list'].map((command) =>
-			this.format(command, ConsoleFormat.CYAN)
+	private commandDescribe() {
+		this.section(
+			`${this.bold('Usage:')} ${this.format('styx', ConsoleFormat.MAGENTA)} <command> [options]`
 		);
 
-		const command = '<command>';
+		this.section(this.bold('Commands:'));
+		this.commandDescription('serve', '', 'Starts the server.');
+		this.commandDescription('exec', '<command> [options]', 'Executes a command.');
+		this.commandDescription('help', '<command>', 'Displays help for a command.');
+		this.commandDescription('list', '', 'List all available commands.');
+	}
 
+	private commandList() {
+		const { commands } = Reflect.getMetadata(Symbols.app, this.constructor) as AppProps;
+
+		const groups = (commands ?? []).reduce((acc, commandClass) => {
+			const groupKey = commandClass.command.split(':')[0];
+			const group = acc.get(groupKey) ?? [];
+			group.push(commandClass);
+			acc.set(groupKey, group);
+			return acc;
+		}, new Map<string, CommandClass[]>());
+
+		for (const [group, groupCommands] of groups) {
+			this.section(this.format(group, ConsoleFormat.BLUE));
+			for (const commandClass of groupCommands) {
+				this.commandDescription(commandClass.command, '', commandClass.description);
+			}
+		}
+	}
+
+	private commandDescription(
+		command: string,
+		args: string,
+		description: string,
+		width: number = InteractsWithConsole.SPACE_WIDTH
+	) {
+		args = args.length === 0 ? ' ' : ` ${args} `;
 		this.write(
-			`${this.bold('Usage:')} ${this.format('styx', ConsoleFormat.MAGENTA)} ${command} [options]\n`
+			` ${this.format(command, ConsoleFormat.CYAN)}${args}${'∙'.repeat(width - command.length - args.length)} ${description}`
 		);
-		this.write(this.bold('Commands:'));
-		this.write(`  ${serve}         \t\tStarts the server.`);
-		this.write(`  ${exec} ${command}\t\tExecutes a command.`);
-		this.write(`  ${help} ${command}\t\tDisplays help for a command.`);
-		this.write(`  ${list}          \t\tList all available commands.`);
 	}
 }

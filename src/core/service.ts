@@ -190,10 +190,11 @@ export namespace Service {
 
 	/**
 	 * Instantiates a service with its dependencies.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This function always create a new instance of the service, even if the service's scope is `ServiceScope.SINGLETON`
 	 * and it has already been registered in the container.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * @param service The service class to instantiate.
 	 */

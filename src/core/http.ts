@@ -7,6 +7,7 @@ import type {
 	TSchema
 } from 'elysia';
 import type { Class } from 'type-fest';
+import type { Middleware } from './middleware';
 import type { Module } from './module';
 import type { Route } from './utils';
 
@@ -15,7 +16,7 @@ import { assign, isEmpty, objectify } from 'radash';
 
 import { Application } from './app';
 import { Database } from './database';
-import { applyMiddlewares, executeMiddlewareChain, Middleware } from './middleware';
+import { applyMiddlewares, executeMiddlewareChain } from './middleware';
 import { Service } from './service';
 import { nextTick, Symbols } from './utils';
 

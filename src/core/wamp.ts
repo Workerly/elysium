@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 import type { Class } from 'type-fest';
 
 import { omit } from 'radash';

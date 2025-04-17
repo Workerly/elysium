@@ -45,6 +45,8 @@ const formatMap: Record<ConsoleFormat, string> = {
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class InteractsWithConsole {
+	protected static readonly SPACE_WIDTH = 60;
+
 	/**
 	 * Write a message to the console.
 	 * @param message The message to write.

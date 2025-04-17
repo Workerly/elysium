@@ -1,7 +1,8 @@
+import type { KeyvStoreAdapter } from 'cacheable';
+import type { KeyvEntry, StoredData } from 'keyv';
+
 import { EventEmitter } from 'node:events';
 
-import { KeyvStoreAdapter } from 'cacheable';
-import { KeyvEntry, StoredData } from 'keyv';
 import { omit } from 'radash';
 
 import { Event } from './event';

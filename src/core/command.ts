@@ -224,7 +224,10 @@ export abstract class Command extends InteractsWithConsole {
 		const validation = this.validateArgs(args);
 
 		if (!validation.valid) {
-			console.error(`Missing required arguments: ${validation.missing.join(', ')}\n`);
+			if (validation.missing.length > 0) {
+				console.error(`Missing required arguments: ${validation.missing.join(', ')}\n`);
+			}
+
 			return false;
 		}
 

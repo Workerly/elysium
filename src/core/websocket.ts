@@ -1,12 +1,13 @@
 import type { ServerWebSocket } from 'bun';
 import type { Context, ErrorContext, TSchema } from 'elysia';
 import type { Class, ConditionalPick, JsonObject, Primitive } from 'type-fest';
+import type { Route } from './utils';
 
 import { Elysia } from 'elysia';
 
 import { Event } from './event';
 import { Service } from './service';
-import { nextTick, Route, Symbols } from './utils';
+import { nextTick, Symbols } from './utils';
 
 /**
  * Properties required when declaring a websocket controller using the `@websocket()` decorator.
