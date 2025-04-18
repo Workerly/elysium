@@ -1,8 +1,132 @@
+import type { KeyvStoreAdapter } from 'keyv';
+
 import { createCache } from 'cache-manager';
 import { KeyvCacheableMemory } from 'cacheable';
 import { Keyv } from 'keyv';
 
 import { KeyvRedis } from './redis';
+
+/**
+ * Interface for a cache storage.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+interface CacheInterface {
+	/**
+	 * Retrieves the cached data for a given key.
+	 * @typeParam T The type of the cached data.
+	 *
+	 * @param key The key of the cached data.
+	 */
+	get<T>(key: string): Promise<T | null>;
+
+	/**
+	 * Retrieves the cached data for a given list of keys.
+	 * @typeParam T The type of the cached data.
+	 *
+	 * @param keys The list of cached data keys.
+	 */
+	mget<T>(keys: string[]): Promise<Array<T | null>>;
+
+	/**
+	 * Gets the TTL of the cached data with the given key.
+	 * @param key The key of the cached data.
+	 * @returns The TTL of the cached data, or `null` if the data does not exist.
+	 */
+	ttl(key: string): Promise<number | null>;
+
+	/**
+	 * Caches data under the given key and an optional TTL.
+	 * @typeParam T The type of the data to cache.
+	 *
+	 * @param key The key of the cached data.
+	 * @param data The data to cache.
+	 * @param ttl The optional TTL of the cached data. If not defined, the data is cached forever.
+	 * @returns The cached data.
+	 */
+	set<T>(key: string, data: T, ttl?: number): Promise<T>;
+
+	/**
+	 * Caches data under the given list of keys and an optional TTL.
+	 * @typeParam T The type of the data to cache.
+	 *
+	 * @param data The list of data to cache.
+	 * @returns The list of cached data.
+	 */
+	mset<T>(
+		data: Array<{
+			key: string;
+			value: T;
+			ttl?: number;
+		}>
+	): Promise<
+		Array<{
+			key: string;
+			value: T;
+			ttl?: number;
+		}>
+	>;
+
+	/**
+	 * Deletes the cached data with the given key.
+	 * @typeParam T The type of the data to cache.
+	 *
+	 * @param key The key of the cached data.
+	 * @returns `true` if the data was deleted, `false` otherwise.
+	 */
+	del(key: string): Promise<boolean>;
+
+	/**
+	 * Deletes the cached data with the given list of keys.
+	 * @typeParam T The type of the data to cache.
+	 *
+	 * @param keys The list of cached data keys.
+	 * @returns `true` if the data was deleted, `false` otherwise.
+	 */
+	mdel(keys: string[]): Promise<boolean>;
+
+	/**
+	 * Deletes all cached data.
+	 * @returns `true` if the data was deleted, `false` otherwise.
+	 */
+	clear(): Promise<boolean>;
+
+	/**
+	 * Creates a sub-cache with the given tags.
+	 * @param tags The list of tags for the sub-cache.
+	 */
+	tags(...tags: string[]): Omit<CacheInterface, 'tags'>;
+}
+
+/**
+ * Makes a cache interface wrapping the given store.
+ * @author Axel Nana <axel.nana@workburd.com>
+ * @param store The cache storage to use in the interface.
+ * @returns A new `CacheInterface`.
+ */
+const makeCacheInterface = (store: KeyvStoreAdapter): CacheInterface => {
+	const base = createCache({
+		stores: [
+			new Keyv({
+				store,
+				namespace: 'cache'
+			})
+		]
+	});
+
+	return {
+		...base,
+		tags(...tags) {
+			return createCache({
+				stores: [
+					new Keyv({
+						store,
+						namespace: `cache__${tags.join('__')}`
+					})
+				]
+			});
+		}
+	};
+};
 
 export namespace Cache {
 	/**
@@ -39,28 +163,15 @@ export namespace Cache {
 	 * Redis-based cache storage.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
-	export const redis = createCache({
-		stores: [
-			//  Redis Store
-			new Keyv({
-				store: new KeyvRedis({
-					connection: 'cache'
-				}),
-				namespace: 'cache'
-			})
-		]
-	});
+	export const redis = makeCacheInterface(
+		new KeyvRedis({
+			connection: 'cache'
+		})
+	);
 
 	/**
 	 * Memory-based cache storage.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
-	export const memory = createCache({
-		stores: [
-			//  High performance in-memory cache with LRU and TTL
-			new Keyv({
-				store: new KeyvCacheableMemory({ ttl: 60000, lruSize: 5000 })
-			})
-		]
-	});
+	export const memory = makeCacheInterface(new KeyvCacheableMemory({ ttl: 60000, lruSize: 5000 }));
 }
