@@ -29,15 +29,15 @@ export enum ConsoleFormat {
  * @author Axel Nana <axel.nana@workbud.com>
  */
 const formatMap: Record<ConsoleFormat, string> = {
-	[ConsoleFormat.BLACK]: Bun.color('black', 'ansi')!,
-	[ConsoleFormat.RED]: Bun.color('red', 'ansi')!,
-	[ConsoleFormat.GREEN]: Bun.color('green', 'ansi')!,
-	[ConsoleFormat.YELLOW]: Bun.color('yellow', 'ansi')!,
-	[ConsoleFormat.BLUE]: Bun.color('blue', 'ansi')!,
-	[ConsoleFormat.MAGENTA]: Bun.color('magenta', 'ansi')!,
-	[ConsoleFormat.CYAN]: Bun.color('cyan', 'ansi')!,
-	[ConsoleFormat.WHITE]: Bun.color('white', 'ansi')!,
-	[ConsoleFormat.GRAY]: Bun.color('gray', 'ansi')!,
+	[ConsoleFormat.BLACK]: Bun.color('black', 'ansi') || Bun.color('black', 'ansi-256') || '',
+	[ConsoleFormat.RED]: Bun.color('red', 'ansi') || Bun.color('red', 'ansi-256') || '',
+	[ConsoleFormat.GREEN]: Bun.color('green', 'ansi') || Bun.color('green', 'ansi-256') || '',
+	[ConsoleFormat.YELLOW]: Bun.color('yellow', 'ansi') || Bun.color('yellow', 'ansi-256') || '',
+	[ConsoleFormat.BLUE]: Bun.color('blue', 'ansi') || Bun.color('blue', 'ansi-256') || '',
+	[ConsoleFormat.MAGENTA]: Bun.color('magenta', 'ansi') || Bun.color('magenta', 'ansi-256') || '',
+	[ConsoleFormat.CYAN]: Bun.color('cyan', 'ansi') || Bun.color('cyan', 'ansi-256') || '',
+	[ConsoleFormat.WHITE]: Bun.color('white', 'ansi') || Bun.color('white', 'ansi-256') || '',
+	[ConsoleFormat.GRAY]: Bun.color('gray', 'ansi') || Bun.color('gray', 'ansi-256') || '',
 	[ConsoleFormat.BOLD]: '\x1b[1m',
 	[ConsoleFormat.UNDERLINE]: '\x1b[4m',
 	[ConsoleFormat.ITALIC]: '\x1b[3m',
@@ -54,7 +54,8 @@ export class InteractsWithConsole {
 	/**
 	 * Write a message to the console.
 	 * @param message The message to write.
-	 * @param newLine Whether to add a newline at the end (default: true).
+	 * @param newLine Whether to add a newline at the end (default: `true`).
+	 * @param out The output stream to write to (default: `process.stdout`).
 	 */
 	public write(message: string, newLine: boolean = true, out: WriteStream = process.stdout): void {
 		out.write(message + (newLine ? '\n' : ''));
@@ -72,7 +73,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public info(message: string): void {
-		this.write(`${this.format('ℹ', ConsoleFormat.BLUE)} ${message}`);
+		this.write(`ℹ️ ${message}`);
 	}
 
 	/**
@@ -80,7 +81,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public success(message: string): void {
-		this.write(`${this.format('✓', ConsoleFormat.GREEN)} ${message}`);
+		this.write(`✅ ${message}`);
 	}
 
 	/**
@@ -88,7 +89,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public warning(message: string): void {
-		this.write(`${this.format('⚠', ConsoleFormat.YELLOW)} ${message}`);
+		this.write(`⚠️ ${message}`);
 	}
 
 	/**
@@ -96,17 +97,17 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public error(message: string): void {
-		this.write(`${this.format('✗', ConsoleFormat.RED)} ${message}`, true, process.stderr);
+		this.write(`❌ ${message}`, true, process.stderr);
 	}
 
 	/**
 	 * Write a debug message to the console (gray text).
-	 * Only shown if DEBUG environment variable is set.
+	 * Only shown if the DEBUG environment variable is set.
 	 * @param message The message to write.
 	 */
 	public debug(message: string): void {
 		if (process.env.DEBUG) {
-			this.write(`${this.format('🔍', ConsoleFormat.GRAY)} ${message}`);
+			this.write(`🔍 ${message}`);
 		}
 	}
 
@@ -162,7 +163,7 @@ export class InteractsWithConsole {
 	 */
 	public title(title: string): void {
 		this.write('');
-		this.write(`\x1b[1m\x1b[4m${title}\x1b[0m`);
+		this.write(this.format(title, ConsoleFormat.BOLD, ConsoleFormat.UNDERLINE));
 		this.write('');
 	}
 
@@ -457,5 +458,16 @@ export class InteractsWithConsole {
 		}
 
 		return options[index];
+	}
+
+	/**
+	 * Format a time value in seconds to a human-readable string.
+	 * @param seconds The time value in seconds.
+	 * @returns A formatted time string.
+	 */
+	protected formatTime(seconds: number): string {
+		if (seconds < 60) return `${seconds.toFixed(1)}s`;
+		if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+		return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 	}
 }

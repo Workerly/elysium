@@ -701,17 +701,6 @@ class CommandProgressBar extends InteractsWithConsole {
 	public getPercentage(): number {
 		return Math.min(100, Math.floor((this.#current / this.#total) * 100));
 	}
-
-	/**
-	 * Format a time value in seconds to a human-readable string.
-	 * @param seconds The time value in seconds.
-	 * @returns A formatted time string.
-	 */
-	private formatTime(seconds: number): string {
-		if (seconds < 60) return `${seconds.toFixed(1)}s`;
-		if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
-		return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-	}
 }
 
 /**
@@ -747,12 +736,25 @@ export class CommandSpinner extends InteractsWithConsole {
 	/**
 	 * The custom frames for the spinner animation.
 	 */
-	#frames: string[] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+	readonly #frames: string[] = [
+		'🕐',
+		'🕑',
+		'🕒',
+		'🕓',
+		'🕔',
+		'🕕',
+		'🕖',
+		'🕗',
+		'🕘',
+		'🕙',
+		'🕚',
+		'🕛'
+	];
 
 	/**
 	 * The delay between frames in milliseconds.
 	 */
-	#frameDelay: number = 80; // milliseconds between frames
+	readonly #frameDelay: number = 80; // milliseconds between frames
 
 	/**
 	 * Create a new spinner instance.
@@ -813,16 +815,13 @@ export class CommandSpinner extends InteractsWithConsole {
 		this.clearLine();
 
 		// Determine completion symbol
-		const symbol = success ? '✓' : '✗';
-		const color = success ? ConsoleFormat.GREEN : ConsoleFormat.RED; // Green for success, red for failure
-
 		const time = this.formatTime(elapsedSec);
 
-		// Write completion message
+		// Write the completion message
 		if (message) {
-			this.write(`${this.format(symbol, color)} ${message} (${time})`);
+			this[success ? 'success' : 'error'](`${message} (${time})`);
 		} else {
-			this.write(`${this.format(symbol, color)} ${this.#title} completed in ${time}`);
+			this[success ? 'success' : 'error'](`${this.#title} completed in ${time}`);
 		}
 
 		// Reset spinner state
@@ -898,16 +897,5 @@ export class CommandSpinner extends InteractsWithConsole {
 
 		// Write the spinner frame and title
 		this.write(`${frame} ${this.#title} (${this.formatTime(elapsedSec)})`, false);
-	}
-
-	/**
-	 * Format a time value in seconds to a human-readable string.
-	 * @param seconds The time value in seconds.
-	 * @returns A formatted time string.
-	 */
-	private formatTime(seconds: number): string {
-		if (seconds < 60) return `${seconds.toFixed(1)}s`;
-		if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
-		return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 	}
 }

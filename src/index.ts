@@ -142,7 +142,7 @@ class UserController {
 		let list = await Cache.memory.get<Array<User>>(`${c.tenant}:users:list`);
 		if (!list) {
 			list = await this.userService.userRepository.all();
-			Cache.memory.set(`${c.tenant}:users:list`, list);
+			await Cache.memory.set(`${c.tenant}:users:list`, list);
 		}
 
 		return list;
@@ -382,12 +382,12 @@ export class SpinnerDemoCommand extends Command {
 				// Wait for the calculated time
 				await this.delay(timePerStep);
 
-				// Update spinner message for each step
+				// Update the spinner message for each step
 				if (i < this.steps) {
 					spinner.update(`${this.getTaskMessage(i)}`);
 				}
 
-				// Simulate a failure at a random step if fail flag is set
+				// Simulate a failure at a random step if the fail flag is set
 				if (this.fail && i === Math.floor(this.steps / 2)) {
 					throw new Error(`Failed during ${this.task} operation at step ${i}`);
 				}
