@@ -27,6 +27,8 @@ export namespace Symbols {
 
 	export const http = Symbol('http');
 
+	export const job = Symbol('job');
+
 	export const elysiaPlugin = Symbol('elysia:plugin');
 }
 

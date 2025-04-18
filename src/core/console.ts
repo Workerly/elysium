@@ -1,4 +1,8 @@
+import type { WriteStream } from 'node:tty';
+
 import * as readline from 'node:readline';
+
+import { omit } from 'radash';
 
 /**
  * ANSI color codes and styles for console output.
@@ -41,7 +45,7 @@ const formatMap: Record<ConsoleFormat, string> = {
 };
 
 /**
- * A utility class for console output with various formatting options.
+ * A utility class for console IO with various formatting options.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class InteractsWithConsole {
@@ -52,8 +56,8 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 * @param newLine Whether to add a newline at the end (default: true).
 	 */
-	public write(message: string, newLine: boolean = true): void {
-		process.stdout.write(message + (newLine ? '\n' : ''));
+	public write(message: string, newLine: boolean = true, out: WriteStream = process.stdout): void {
+		out.write(message + (newLine ? '\n' : ''));
 	}
 
 	/**
@@ -92,7 +96,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public error(message: string): void {
-		this.write(`${this.format('✗', ConsoleFormat.RED)} ${message}`);
+		this.write(`${this.format('✗', ConsoleFormat.RED)} ${message}`, true, process.stderr);
 	}
 
 	/**
@@ -103,6 +107,52 @@ export class InteractsWithConsole {
 	public debug(message: string): void {
 		if (process.env.DEBUG) {
 			this.write(`${this.format('🔍', ConsoleFormat.GRAY)} ${message}`);
+		}
+	}
+
+	/**
+	 * Display a JavaScript error in the console with its message, stack trace,
+	 * and any additional relevant information.
+	 * @param error The error to display.
+	 * @param title Optional title to display before the error message (default: '').
+	 */
+	public trace(error: Error & Record<string, any>, title?: string): void {
+		if (!error) return;
+
+		// Determine standard error information
+		const errorName = error.name || 'Error';
+		const errorMessage = error.message || 'An error occurred';
+		const errorStack = error.stack || '';
+
+		// Display the title if provided
+		if (title) {
+			this.title(title);
+		}
+
+		// Display the error name and message in red
+		this.write(this.format(`${errorName}: ${errorMessage}`, ConsoleFormat.RED));
+
+		// Display the stack trace in gray, each line prefixed by a tab for readability
+		this.write(this.format('Stack Trace:', ConsoleFormat.BOLD));
+		this.write(
+			this.format(
+				errorStack
+					.split('\n')
+					.map((line) => `\t${line}`)
+					.join('\n'),
+				ConsoleFormat.GRAY
+			)
+		);
+
+		// Display any other custom properties
+		const customProps = omit(error, ['name', 'message', 'stack']);
+
+		if (customProps.length > 0) {
+			this.write(this.format('Additional Information:', ConsoleFormat.BOLD));
+			Object.keys(customProps).forEach((prop) => {
+				const value = error[prop];
+				this.write(`\t${prop}: ${JSON.stringify(value)}`, false);
+			});
 		}
 	}
 

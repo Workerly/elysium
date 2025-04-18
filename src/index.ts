@@ -1,13 +1,15 @@
 import 'reflect-metadata';
 
+import type { Elysia } from 'elysia';
 import type { DatabaseConnection } from './core/database';
 import type { EventData } from './core/event';
 import type { Context } from './core/http';
+import type { Route } from './core/utils';
 import type { WS, WSError } from './core/websocket';
 
 import { boolean, integer, uuid, varchar } from 'drizzle-orm/pg-core';
 import { t } from 'elysia';
-import { isEmpty, uid } from 'radash';
+import { flat, isEmpty, uid } from 'radash';
 import { Class } from 'type-fest';
 
 import { app, AppContext, Application } from './core/app';
@@ -29,12 +31,16 @@ import {
 	query,
 	sse
 } from './core/http';
+import { job, Job } from './core/job';
 import { middleware, Middleware } from './core/middleware';
 import { Model } from './core/model';
 import { module, Module } from './core/module';
 import { Repository } from './core/repository';
 import { inject, Service, service, ServiceScope } from './core/service';
+import { Symbols } from './core/utils';
 import { onClose, onError as onErrorWS, onMessage, onOpen, websocket } from './core/websocket';
+import { WorkerPool } from './core/worker';
+import { EmailJob } from './email.job';
 
 class AuthMiddleware extends Middleware {
 	public onBeforeHandle(ctx: Context) {
@@ -119,7 +125,6 @@ const mo = decorate((c: Context) => {
 class UserController {
 	public constructor(
 		@inject('user.service') public readonly userService: UserService,
-		@inject('db.connection.main') public readonly db: DatabaseConnection,
 		public id: string = uid(8)
 	) {}
 
@@ -160,8 +165,9 @@ class UserController {
 		@query() q: any,
 		@co() c: UserController
 	) {
-		const res = await this.db.insert(UserRepository.table).values(b).returning();
-		return res[0];
+		const user = await this.userService.userRepository.insert(b);
+		Event.emit('user:add', user);
+		return user;
 	}
 
 	@patch({ response: UserModel.selectSchema })
@@ -183,9 +189,10 @@ class UserController {
 	}
 
 	@on({ event: 'user:add' })
-	private static addFromEvent(e: EventData<{ id: string; name: string }>) {
+	private static addFromEvent(e: EventData<User>) {
 		const us = Service.get<UserService>('user.service')!;
 		us.data.push(e.data);
+		WorkerPool.instance.runJob(EmailJob, e.data.email, 'Hello from Elysium!');
 	}
 
 	@onRequest()
@@ -501,7 +508,7 @@ export class SpinnerDemoCommand extends Command {
 	redis: {
 		default: 'cache',
 		connections: {
-			cache: { url: process.env.REDIS_URL!, connectionTimeout: 0 }
+			cache: { url: process.env.REDIS_URL! }
 		}
 	},
 	swagger: {
@@ -515,12 +522,19 @@ export class SpinnerDemoCommand extends Command {
 		}
 	}
 })
-export class App extends Application {}
+export class App extends Application {
+	protected async onStart(e: Elysia<Route>) {
+		await super.onStart(e);
+		await WorkerPool.instance.init();
+		WorkerPool.instance.addWorker(['email']);
+		WorkerPool.instance.addWorker(['email', 'sync']);
+	}
+}
 
 Event.on('elysium:error', (e: EventData<Error>) => {
 	console.error('Fuck', JSON.stringify(e));
 });
 
-setInterval(() => {
-	Event.emit('user:add', { id: uid(8), name: `User ${uid(8)}` });
-}, 1000);
+Event.on('elysium:app:stop', () => {
+	console.log('Stopping Elysium');
+});
