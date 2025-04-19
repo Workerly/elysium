@@ -3,6 +3,7 @@ import type { KeyvStoreAdapter } from 'keyv';
 import { createCache } from 'cache-manager';
 import { KeyvCacheableMemory } from 'cacheable';
 import { Keyv } from 'keyv';
+import { alphabetical } from 'radash';
 
 import { KeyvRedis } from './redis';
 
@@ -113,17 +114,28 @@ const makeCacheInterface = (store: KeyvStoreAdapter): CacheInterface => {
 		]
 	});
 
+	const tagsCache = new Map<string, Omit<CacheInterface, 'tags'>>();
+
 	return {
 		...base,
 		tags(...tags) {
-			return createCache({
-				stores: [
-					new Keyv({
-						store,
-						namespace: `cache__${tags.join('__')}`
-					})
-				]
-			});
+			const namespace = `cache__${alphabetical(tags, (item) => item).join('__')}`;
+			let cache = tagsCache.get(namespace);
+
+			if (!cache) {
+				cache = createCache({
+					stores: [
+						new Keyv({
+							store,
+							namespace
+						})
+					]
+				});
+
+				tagsCache.set(namespace, cache);
+			}
+
+			return cache;
 		}
 	};
 };
