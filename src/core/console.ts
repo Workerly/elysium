@@ -2,7 +2,7 @@ import type { WriteStream } from 'node:tty';
 
 import * as readline from 'node:readline';
 
-import { omit } from 'radash';
+import { isEmpty, omit } from 'radash';
 
 /**
  * ANSI color codes and styles for console output.
@@ -148,7 +148,7 @@ export class InteractsWithConsole {
 		// Display any other custom properties
 		const customProps = omit(error, ['name', 'message', 'stack']);
 
-		if (customProps.length > 0) {
+		if (!isEmpty(customProps)) {
 			this.write(this.format('Additional Information:', ConsoleFormat.BOLD));
 			Object.keys(customProps).forEach((prop) => {
 				const value = error[prop];
