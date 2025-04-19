@@ -3,6 +3,7 @@ import type { Class } from 'type-fest';
 import { isArray, trim } from 'radash';
 
 import { ConsoleFormat, InteractsWithConsole } from './console';
+import { Symbols } from './utils';
 
 /**
  * Supported command argument types.
@@ -91,11 +92,6 @@ type CommandArgumentMetadata = CommandArgumentProps & {
 };
 
 /**
- * Metadata key for storing command arguments
- */
-const COMMAND_ARGUMENTS_METADATA = Symbol('command:arguments');
-
-/**
  * Type for a command class.
  * @author Axel Nana <axel.nana@workbud.com>
  */
@@ -142,13 +138,10 @@ export abstract class Command extends InteractsWithConsole {
 	 * @param name The name of the argument.
 	 * @param props Additional options for the argument.
 	 */
-	public static arg(
-		name?: string,
-		props: Omit<Partial<CommandArgumentProps>, 'name'> = {}
-	): PropertyDecorator {
+	public static arg(props: Partial<CommandArgumentProps> = {}): PropertyDecorator {
 		return function (target, propertyKey) {
 			const args: CommandArgumentMetadata[] =
-				Reflect.getMetadata(COMMAND_ARGUMENTS_METADATA, target.constructor) ?? [];
+				Reflect.getMetadata(Symbols.arg, target.constructor) ?? [];
 
 			const propertyType = Reflect.getMetadata('design:type', target, propertyKey);
 
@@ -177,7 +170,7 @@ export abstract class Command extends InteractsWithConsole {
 							inferredType = CommandArgumentType.STRING;
 							break;
 						default:
-							inferredType = CommandArgumentType.STRING; // Default to string for unknown types
+							inferredType = undefined;
 					}
 				}
 				// Check if it's an enum by examining if the property type has values
@@ -194,7 +187,7 @@ export abstract class Command extends InteractsWithConsole {
 			}
 
 			args.push({
-				name: name ?? (propertyKey as string),
+				name: props.name ?? (propertyKey as string),
 				description: props.description,
 				required: props.required ?? false,
 				default: props.default,
@@ -204,7 +197,7 @@ export abstract class Command extends InteractsWithConsole {
 				propertyKey: propertyKey as string
 			});
 
-			Reflect.defineMetadata(COMMAND_ARGUMENTS_METADATA, args, target.constructor);
+			Reflect.defineMetadata(Symbols.arg, args, target.constructor);
 		};
 	}
 
@@ -253,7 +246,7 @@ export abstract class Command extends InteractsWithConsole {
 	 * @returns The list of registered arguments.
 	 */
 	protected getArguments(): CommandArgumentMetadata[] {
-		return Reflect.getMetadata(COMMAND_ARGUMENTS_METADATA, this.constructor) || [];
+		return Reflect.getMetadata(Symbols.arg, this.constructor) || [];
 	}
 
 	/**

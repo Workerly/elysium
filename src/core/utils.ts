@@ -17,6 +17,8 @@ export namespace Symbols {
 
 	export const job = Symbol('job');
 
+	export const arg = Symbol('command:arguments');
+
 	export const elysiaPlugin = Symbol('elysia:plugin');
 }
 

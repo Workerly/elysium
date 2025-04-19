@@ -286,10 +286,10 @@ class TestCommand extends Command {
 		super();
 	}
 
-	@Command.arg('name', { description: 'Name of the user', required: true })
+	@Command.arg({ description: 'Name of the user', required: true })
 	private name: string = '';
 
-	@Command.arg('age', { description: 'Age of the user', required: true, default: 28 })
+	@Command.arg({ description: 'Age of the user', required: true, default: 28 })
 	private age: number = 0;
 
 	public async run() {
@@ -309,7 +309,7 @@ export class SpinnerDemoCommand extends Command {
 	public static readonly description: string =
 		'Demonstrates the use of spinners for indeterminate operations';
 
-	@Command.arg('task', {
+	@Command.arg({
 		description: 'The type of task to simulate',
 		default: 'download',
 		enum: ['download', 'process', 'connect', 'upload', 'analyze'],
@@ -317,21 +317,21 @@ export class SpinnerDemoCommand extends Command {
 	})
 	private task: string = 'download';
 
-	@Command.arg('duration', {
+	@Command.arg({
 		description: 'Duration of the simulated task in seconds',
 		type: CommandArgumentType.NUMBER,
 		default: 5
 	})
 	private duration: number = 5;
 
-	@Command.arg('steps', {
+	@Command.arg({
 		description: 'Number of steps in the simulated task',
 		type: CommandArgumentType.NUMBER,
 		default: 3
 	})
 	private steps: number = 3;
 
-	@Command.arg('fail', {
+	@Command.arg({
 		description: 'Simulate a failure during the operation',
 		type: CommandArgumentType.BOOLEAN,
 		default: false
@@ -482,7 +482,7 @@ export class ProgressDemoCommand extends Command {
 	public static readonly description: string =
 		'Demonstrates the use of progress bars for operations with known steps';
 
-	@Command.arg('task', {
+	@Command.arg({
 		description: 'The type of task to simulate',
 		default: 'file',
 		enum: ['file', 'database', 'import', 'export', 'batch'],
@@ -490,21 +490,21 @@ export class ProgressDemoCommand extends Command {
 	})
 	private task: string = 'file';
 
-	@Command.arg('items', {
+	@Command.arg({
 		description: 'Number of items to process',
 		type: CommandArgumentType.NUMBER,
 		default: 100
 	})
 	private items: number = 100;
 
-	@Command.arg('delay', {
+	@Command.arg({
 		description: 'Delay between items in milliseconds',
 		type: CommandArgumentType.NUMBER,
 		default: 50
 	})
 	private delay: number = 50;
 
-	@Command.arg('fail', {
+	@Command.arg({
 		description: 'Simulate a failure during the operation',
 		type: CommandArgumentType.BOOLEAN,
 		default: false
