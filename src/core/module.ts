@@ -23,7 +23,7 @@ export type ModuleProps = {
  * @author Axel Nana <axel.nana@workbud.com>
  * @param options The decorator options.
  */
-export const module = (options: ModuleProps) => {
+export const module = (options: ModuleProps = {}) => {
 	return function (target: Class<Module>) {
 		async function handleModule(m: Module): Promise<Elysia<Route>> {
 			// TODO: Use the logger service here

@@ -94,7 +94,7 @@ export type AppProps = {
  * Marks a class as the application main entry.
  * @param props The decorator options.
  */
-export const app = (props: AppProps): ClassDecorator => {
+export const app = (props: AppProps = {}): ClassDecorator => {
 	return function (target) {
 		props = assign({ modules: [], database: undefined, swagger: false }, props);
 		Reflect.defineMetadata(Symbols.app, props, target);
@@ -115,7 +115,8 @@ export abstract class Application extends InteractsWithConsole {
 	// @ts-expect-error The property is not initialized in the constructor.
 	#elysia: Elysia<Route>;
 	#debug: boolean;
-	readonly #appContextStorage: AppContext = new AsyncLocalStorage();
+
+	private readonly _appContextStorage: AppContext = new AsyncLocalStorage();
 
 	/**
 	 * Gets the running application instance.
@@ -128,12 +129,11 @@ export abstract class Application extends InteractsWithConsole {
 	 * Gets the application context shared between asynchronous operations.
 	 */
 	public static get context(): AppContext {
-		return Application.instance.#appContextStorage;
+		return Application.instance._appContextStorage;
 	}
 
 	/**
 	 * Creates a new instance of the application.
-	 * @param config The Elysia configuration.
 	 */
 	public constructor() {
 		super();
@@ -168,7 +168,7 @@ export abstract class Application extends InteractsWithConsole {
 		}
 
 		// Run the application
-		this.run();
+		this.run().then(() => Event.emit('elysium:app:launched', this, this));
 	}
 
 	/**
@@ -215,7 +215,7 @@ export abstract class Application extends InteractsWithConsole {
 	protected async onStop(elysia: Elysia<Route>): Promise<void> {}
 
 	protected async run(): Promise<void> {
-		const argv = Bun.argv.slice(2);
+		const argv = process.argv.slice(2);
 
 		const action = argv[0];
 
@@ -243,7 +243,7 @@ export abstract class Application extends InteractsWithConsole {
 						if (commandClass) {
 							const commandInstance = Service.make(commandClass);
 							this.write(await commandInstance.help());
-							process.exit(0);
+							return process.exit(0);
 						}
 
 						console.error(`Command <${command}> not found.`);
@@ -271,7 +271,7 @@ export abstract class Application extends InteractsWithConsole {
 			}
 		}
 
-		process.exit(0);
+		return process.exit(0);
 	}
 
 	private async commandWork(argv: string[]) {
@@ -329,7 +329,7 @@ export abstract class Application extends InteractsWithConsole {
 	}
 
 	/**
-	 * Execute a command.
+	 * Executes a command.
 	 * @param command The command to execute.
 	 * @param argv The command line arguments.
 	 */
@@ -342,7 +342,7 @@ export abstract class Application extends InteractsWithConsole {
 		if (!commandClass) {
 			console.error(`Command ${command} not found`);
 			this.commandList();
-			process.exit(1);
+			return process.exit(1);
 		}
 
 		try {
@@ -359,15 +359,15 @@ export abstract class Application extends InteractsWithConsole {
 				this.write(help);
 			}
 
-			process.exit(0);
+			return process.exit(0);
 		} catch (error: any) {
 			console.error(error.message);
-			process.exit(1);
+			return process.exit(1);
 		}
 	}
 
 	/**
-	 * Start the server on the specified port.
+	 * Starts the server on the specified port.
 	 */
 	private async commandServe(): Promise<void> {
 		const { server, modules, swagger } = Reflect.getMetadata(
@@ -375,7 +375,7 @@ export abstract class Application extends InteractsWithConsole {
 			this.constructor
 		) as AppProps;
 
-		Event.emit('elysium:app:before-init', this, this);
+		Event.emit('elysium:server:before-init', this, this);
 
 		this.#elysia = new Elysia(server);
 
@@ -395,15 +395,15 @@ export abstract class Application extends InteractsWithConsole {
 			})
 			.onStart(async (elysia) => {
 				await this.onStart(elysia);
-				Event.emit('elysium:app:start', elysia, this);
+				Event.emit('elysium:server:start', elysia, this);
 			})
 			.onStop(async (elysia) => {
 				await this.onStop(elysia);
-				Event.emit('elysium:app:stop', elysia, this);
-				this.#appContextStorage.disable();
+				Event.emit('elysium:server:stop', elysia, this);
+				this._appContextStorage.disable();
 			});
 
-		Event.emit('elysium:app:after-init', this, this);
+		Event.emit('elysium:server:after-init', this, this);
 
 		if (swagger) {
 			this.#elysia.use(await swaggerPlugin(swagger));
@@ -419,7 +419,7 @@ export abstract class Application extends InteractsWithConsole {
 				console.error(
 					`Invalid module class ${moduleClass.name} registered in app ${this.constructor.name}. Ensure that you used the @module() decorator on the module.`
 				);
-				process.exit(1);
+				return process.exit(1);
 			}
 
 			const module = Service.bind(moduleClass);
@@ -434,7 +434,7 @@ export abstract class Application extends InteractsWithConsole {
 
 		process.on('SIGINT', () => {
 			this.#elysia.stop();
-			process.exit(0);
+			return process.exit(0);
 		});
 	}
 
