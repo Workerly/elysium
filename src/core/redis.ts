@@ -63,7 +63,7 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 	}) {
 		super();
 
-		Event.once('elysium:app:before-init', () => {
+		Event.once('elysium:app:launched', () => {
 			this.#client = Redis.getConnection(props.connection);
 		});
 
@@ -112,14 +112,14 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		this.#namespace = value;
 	}
 
-	async get<Value>(key: string): Promise<StoredData<Value> | undefined> {
+	public async get<Value>(key: string): Promise<StoredData<Value> | undefined> {
 		key = this.createKeyPrefix(key, this.#namespace);
 		const value = await this.client.get(key);
 
 		return value === null ? undefined : (value as Value);
 	}
 
-	async set(key: string, value: any, ttl?: number) {
+	public async set(key: string, value: any, ttl?: number) {
 		key = this.createKeyPrefix(key, this.#namespace);
 
 		if (ttl) {
@@ -129,7 +129,7 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		}
 	}
 
-	async setMany(values: Array<KeyvEntry>): Promise<void> {
+	public async setMany(values: Array<KeyvEntry>): Promise<void> {
 		// TODO: Use MULTI when available in Bun
 		const multi = [];
 
@@ -147,7 +147,7 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		await Promise.all(multi);
 	}
 
-	async delete(key: string): Promise<boolean> {
+	public async delete(key: string): Promise<boolean> {
 		key = this.createKeyPrefix(key, this.#namespace);
 		// TODO: Use UNLINK when available in Bun
 		const deleted = await (this.#useUnlink
@@ -157,7 +157,7 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		return deleted > 0;
 	}
 
-	async clear(): Promise<void> {
+	public async clear(): Promise<void> {
 		try {
 			if (!this.#namespace && this.#noNamespaceAffectsAll) {
 				await this.client.send('FLUSHDB', []);
@@ -201,12 +201,12 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		}
 	}
 
-	async has(key: string): Promise<boolean> {
+	public async has(key: string): Promise<boolean> {
 		key = this.createKeyPrefix(key, this.#namespace);
 		return this.client.exists(key);
 	}
 
-	async hasMany(keys: string[]): Promise<boolean[]> {
+	public async hasMany(keys: string[]): Promise<boolean[]> {
 		const multi = [];
 
 		for (const key of keys) {
@@ -217,7 +217,7 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		return Promise.all(multi);
 	}
 
-	async getMany<Value>(keys: string[]): Promise<Array<StoredData<Value | undefined>>> {
+	public async getMany<Value>(keys: string[]): Promise<Array<StoredData<Value | undefined>>> {
 		if (keys.length === 0) {
 			return [];
 		}
@@ -228,11 +228,11 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		return values as Value[];
 	}
 
-	async disconnect(): Promise<void> {
+	public async disconnect(): Promise<void> {
 		this.client.close();
 	}
 
-	async deleteMany(keys: string[]): Promise<boolean> {
+	public async deleteMany(keys: string[]): Promise<boolean> {
 		let result = false;
 
 		// TODO: Use MULTI when available in Bun
@@ -258,7 +258,7 @@ export class KeyvRedis extends EventEmitter implements KeyvStoreAdapter {
 		return result;
 	}
 
-	async *iterator<Value>(
+	public async *iterator<Value>(
 		namespace?: string
 	): AsyncGenerator<Array<string | Awaited<Value> | undefined>, void> {
 		const match = namespace ? `${namespace}${this.#keyPrefixSeparator}*` : '*';

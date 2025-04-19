@@ -65,7 +65,7 @@ export class InteractsWithConsole {
 	 * Write a new line to the console.
 	 */
 	public newLine(): void {
-		this.write('');
+		this.write('\n', false);
 	}
 
 	/**
@@ -162,9 +162,9 @@ export class InteractsWithConsole {
 	 * @param title The title to write.
 	 */
 	public title(title: string): void {
-		this.write('');
+		this.newLine();
 		this.write(this.format(title, ConsoleFormat.BOLD, ConsoleFormat.UNDERLINE));
-		this.write('');
+		this.newLine();
 	}
 
 	/**
@@ -172,7 +172,7 @@ export class InteractsWithConsole {
 	 * @param header The section header to write.
 	 */
 	public section(header: string): void {
-		this.write('');
+		this.newLine();
 		this.write(`\x1b[1m${header}\x1b[0m`);
 	}
 
@@ -263,7 +263,7 @@ export class InteractsWithConsole {
 			this.write(line);
 		}
 
-		this.write('');
+		this.newLine();
 	}
 
 	/**

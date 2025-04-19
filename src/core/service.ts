@@ -324,4 +324,12 @@ export namespace Service {
 		const serviceName = isString(service) ? service : service.name;
 		return servicesRegistry.has(serviceName);
 	};
+
+	/**
+	 * Clears the container.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 */
+	export const clear = () => {
+		servicesRegistry.clear();
+	};
 }

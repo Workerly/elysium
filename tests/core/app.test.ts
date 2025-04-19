@@ -1,51 +1,53 @@
 import 'reflect-metadata';
 
+import type { Mock } from 'bun:test';
+import type { AppContext } from '../../src/core/app';
+import type { Route } from '../../src/core/utils';
+
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import { afterEach, beforeEach, describe, expect, it, Mock, mock, spyOn } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
 
-// Import the classes and types we need to test
-import { app, AppContext, Application, AppProps } from '../../src/core/app';
+import { app, Application } from '../../src/core/app';
 import { Database } from '../../src/core/database';
 import { Event } from '../../src/core/event';
 import { Middleware } from '../../src/core/middleware';
 import { module, Module } from '../../src/core/module';
 import { Redis } from '../../src/core/redis';
 import { Service } from '../../src/core/service';
-import { nextTick, Route, Symbols } from '../../src/core/utils';
+import { nextTick, Symbols } from '../../src/core/utils';
 
 // Mock dependencies
 mock.module('../../src/core/database', () => ({
 	Database: {
-		registerConnection: mock(),
-		connectionExists: mock(() => true),
-		setDefaultConnection: mock(),
-		getDefaultConnection: mock(() => ({
-			transaction: mock((fn) => fn())
-		}))
+		registerConnection: mock(Database.registerConnection),
+		connectionExists: mock(Database.connectionExists),
+		setDefaultConnection: mock(Database.setDefaultConnection),
+		getDefaultConnection: mock(Database.getDefaultConnection),
+		getConnection: mock(Database.getConnection)
 	}
 }));
 
 mock.module('../../src/core/redis', () => ({
 	Redis: {
-		registerConnection: mock(),
-		connectionExists: mock(() => true),
-		setDefaultConnection: mock()
+		registerConnection: mock(Redis.registerConnection),
+		connectionExists: mock(Redis.connectionExists),
+		setDefaultConnection: mock(Redis.setDefaultConnection),
+		getDefaultConnection: mock(Redis.getDefaultConnection),
+		getConnection: mock(Redis.getConnection)
 	}
 }));
 
 mock.module('../../src/core/service', () => ({
 	Service: {
-		instance: mock(),
-		make: mock(),
-		get: mock(),
-		bind: mock((cls) => {
-			return {
-				beforeRegister: mock(),
-				afterRegister: mock()
-			};
-		})
+		instance: mock(Service.instance),
+		make: mock(Service.make),
+		get: mock(Service.get),
+		bind: mock(Service.bind),
+		clear: mock(Service.clear),
+		exists: mock(Service.exists),
+		remove: mock(Service.remove)
 	}
 }));
 
@@ -60,6 +62,10 @@ mock.module('../../src/core/event', () => ({
 
 // Test decorator
 describe('@app decorator', () => {
+	afterAll(() => {
+		mock.restore();
+	});
+
 	it('should set metadata on the target class', () => {
 		// Create a test class
 		@app({
@@ -91,6 +97,11 @@ describe('Application class', () => {
 
 	afterEach(() => {
 		process.exit = originalExit;
+		Service.clear();
+	});
+
+	afterAll(() => {
+		mock.restore();
 	});
 
 	describe('constructor', () => {
@@ -151,7 +162,7 @@ describe('Application class', () => {
 				database: {
 					default: 'main',
 					connections: {
-						main: { connection: 'sqlite::memory:' }
+						main: { connection: process.env.DATABASE_TEST_URL! }
 					}
 				}
 			})
@@ -162,7 +173,7 @@ describe('Application class', () => {
 
 			// Check if Database connections were registered
 			expect(Database.registerConnection).toHaveBeenCalledWith('main', {
-				connection: 'sqlite::memory:'
+				connection: process.env.DATABASE_TEST_URL!
 			});
 			expect(Database.connectionExists).toHaveBeenCalledWith('main');
 			expect(Database.setDefaultConnection).toHaveBeenCalledWith('main');
@@ -606,7 +617,7 @@ describe('Application class', () => {
 
 			// Mock Service.make to return the mock command instance
 			(Service.make as Mock<typeof Service.make>).mockImplementationOnce((service) =>
-				service === mockCommand ? mockCommandInstance : undefined
+				service === (mockCommand as any) ? (mockCommandInstance as any) : undefined
 			);
 
 			// Save original argv
