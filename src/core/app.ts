@@ -2,10 +2,9 @@ import type { ElysiaSwaggerConfig } from '@elysiajs/swagger';
 import type { ElysiaConfig, ErrorContext, PreContext } from 'elysia';
 import type { CommandClass } from './command';
 import type { DatabaseConnectionProps } from './database';
-import type { Singleton } from './http';
+import type { Route, Singleton } from './http';
 import type { ModuleClass } from './module';
 import type { RedisConnectionProps } from './redis';
-import type { Route } from './utils';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { parseArgs } from 'node:util';
@@ -91,17 +90,6 @@ export type AppProps = {
 };
 
 /**
- * Marks a class as the application main entry.
- * @param props The decorator options.
- */
-export const app = (props: AppProps = {}): ClassDecorator => {
-	return function (target) {
-		props = assign({ modules: [], database: undefined, swagger: false }, props);
-		Reflect.defineMetadata(Symbols.app, props, target);
-	};
-};
-
-/**
  * Type for the application context.
  * @author Axel Nana <axel.nana@workbud.com>
  */
@@ -130,6 +118,17 @@ export abstract class Application extends InteractsWithConsole {
 	 */
 	public static get context(): AppContext {
 		return Application.instance._appContextStorage;
+	}
+
+	/**
+	 * Marks a class as the application main entry.
+	 * @param props The decorator options.
+	 */
+	public static register(props: AppProps = {}): ClassDecorator {
+		return function (target) {
+			props = assign({ modules: [], database: undefined, swagger: false }, props);
+			Reflect.defineMetadata(Symbols.app, props, target);
+		};
 	}
 
 	/**

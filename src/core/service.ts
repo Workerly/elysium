@@ -116,61 +116,61 @@ export type ServiceProps = Partial<{
 	scope: ServiceScope;
 }>;
 
-/**
- * Marks a class as a service
- * @author Axel Nana <axel.nana@workbud.com>
- * @param options The decorator options.
- */
-export const service = (options?: ServiceProps) => {
-	return function (target: ServiceClass) {
-		const name = options?.name ?? target.name;
-		const scope = options?.scope ?? ServiceScope.SINGLETON;
-
-		if (Service.exists(name)) {
-			// TODO: Use the logger service here
-			console.error(`A service with the name ${name} has already been registered.`);
-			process.exit(1);
-		}
-
-		const factory = () => Service.make(target);
-
-		if (scope === ServiceScope.SINGLETON) {
-			const service = factory();
-			servicesRegistry.set(name, {
-				scope,
-				factory() {
-					return service;
-				}
-			});
-		} else {
-			servicesRegistry.set(name, {
-				scope,
-				factory
-			});
-		}
-	};
-};
-
-/**
- * Resolves a registered service and set it as a parameter value.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param name An optional name for the service. If not set, the name of the parameter's type is used instead.
- */
-export const inject = (name?: string): ParameterDecorator => {
-	return function (target, propertyKey, parameterIndex) {
-		const services = Reflect.getMetadata(Symbols.services, target, propertyKey!) ?? [];
-		const types = Reflect.getMetadata('design:paramtypes', target, propertyKey!) ?? [];
-
-		services.push({
-			name: name ?? types[parameterIndex].name,
-			index: parameterIndex
-		});
-
-		Reflect.defineMetadata(Symbols.services, services, target, propertyKey!);
-	};
-};
-
 export namespace Service {
+	/**
+	 * Marks a class as a service
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param options The decorator options.
+	 */
+	export const register = (options?: ServiceProps) => {
+		return function (target: ServiceClass) {
+			const name = options?.name ?? target.name;
+			const scope = options?.scope ?? ServiceScope.SINGLETON;
+
+			if (Service.exists(name)) {
+				// TODO: Use the logger service here
+				console.error(`A service with the name ${name} has already been registered.`);
+				process.exit(1);
+			}
+
+			const factory = () => Service.make(target);
+
+			if (scope === ServiceScope.SINGLETON) {
+				const service = factory();
+				servicesRegistry.set(name, {
+					scope,
+					factory() {
+						return service;
+					}
+				});
+			} else {
+				servicesRegistry.set(name, {
+					scope,
+					factory
+				});
+			}
+		};
+	};
+
+	/**
+	 * Resolves a registered service and set it as a parameter value.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name An optional name for the service. If not set, the name of the parameter's type is used instead.
+	 */
+	export const inject = (name?: string): ParameterDecorator => {
+		return function (target, propertyKey, parameterIndex) {
+			const services = Reflect.getMetadata(Symbols.services, target, propertyKey!) ?? [];
+			const types = Reflect.getMetadata('design:paramtypes', target, propertyKey!) ?? [];
+
+			services.push({
+				name: name ?? types[parameterIndex].name,
+				index: parameterIndex
+			});
+
+			Reflect.defineMetadata(Symbols.services, services, target, propertyKey!);
+		};
+	};
+
 	/**
 	 * Retrieves a registered service's instance from the container.
 	 * @author Axel Nana <axel.nana@workbud.com>

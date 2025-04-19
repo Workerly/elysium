@@ -25,23 +25,6 @@ export type JobProps = {
 };
 
 /**
- * Marks a class as a job.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param options The decorator options.
- */
-export const job = (options: JobProps = {}) => {
-	return function (target: Class<Job>) {
-		options = assign({ name: target.name, queue: 'default' }, options);
-
-		const name = `job.${options.name}`;
-
-		Service.instance(name, target);
-
-		Reflect.defineMetadata(Symbols.job, { name, queue: options.queue }, target);
-	};
-};
-
-/**
  * Base class for background jobs.
  *
  * Jobs are classes that can be executed in the background. They provide
@@ -54,6 +37,23 @@ export abstract class Job extends InteractsWithConsole {
 	#completedAt?: Date;
 	#status: JobStatus = JobStatus.PENDING;
 	#err?: Error;
+
+	/**
+	 * Marks a class as a job.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param options The decorator options.
+	 */
+	public static register(options: JobProps = {}) {
+		return function (target: Class<Job>) {
+			options = assign({ name: target.name, queue: 'default' }, options);
+
+			const name = `job.${options.name}`;
+
+			Service.instance(name, target);
+
+			Reflect.defineMetadata(Symbols.job, { name, queue: options.queue }, target);
+		};
+	}
 
 	/**
 	 * Unique identifier for the job.

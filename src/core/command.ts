@@ -96,78 +96,6 @@ type CommandArgumentMetadata = CommandArgumentProps & {
 const COMMAND_ARGUMENTS_METADATA = Symbol('command:arguments');
 
 /**
- * Decorator for registering a command argument.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param name The name of the argument.
- * @param props Additional options for the argument.
- */
-export const arg = (
-	name?: string,
-	props: Omit<Partial<CommandArgumentProps>, 'name'> = {}
-): PropertyDecorator => {
-	return function (target, propertyKey) {
-		const args: CommandArgumentMetadata[] =
-			Reflect.getMetadata(COMMAND_ARGUMENTS_METADATA, target.constructor) ?? [];
-
-		const propertyType = Reflect.getMetadata('design:type', target, propertyKey);
-
-		// Infer argument type from property type if not explicitly specified
-		let inferredType = props.type;
-
-		if (!inferredType && propertyType) {
-			if (propertyType === Array) {
-				inferredType = CommandArgumentType.ARRAY;
-
-				if (!props.arrayType) {
-					props = {
-						...props,
-						arrayType: CommandArgumentType.STRING
-					};
-				}
-			} else if (propertyType.constructor !== Object) {
-				switch (propertyType.name.toLowerCase()) {
-					case 'number':
-						inferredType = CommandArgumentType.NUMBER;
-						break;
-					case 'boolean':
-						inferredType = CommandArgumentType.BOOLEAN;
-						break;
-					case 'string':
-						inferredType = CommandArgumentType.STRING;
-						break;
-					default:
-						inferredType = CommandArgumentType.STRING; // Default to string for unknown types
-				}
-			}
-			// Check if it's an enum by examining if the property type has values
-			else if (Object.values(propertyType).length > 0) {
-				inferredType = CommandArgumentType.ENUM;
-
-				if (!props.enum) {
-					props = {
-						...props,
-						enum: Object.values(propertyType)
-					};
-				}
-			}
-		}
-
-		args.push({
-			name: name ?? (propertyKey as string),
-			description: props.description,
-			required: props.required ?? false,
-			default: props.default,
-			type: inferredType,
-			enum: props.enum,
-			arrayType: props.arrayType,
-			propertyKey: propertyKey as string
-		});
-
-		Reflect.defineMetadata(COMMAND_ARGUMENTS_METADATA, args, target.constructor);
-	};
-};
-
-/**
  * Type for a command class.
  * @author Axel Nana <axel.nana@workbud.com>
  */
@@ -207,6 +135,78 @@ export abstract class Command extends InteractsWithConsole {
 	 * This is displayed when displaying help messages for the command.
 	 */
 	public static readonly description: string = 'Command description';
+
+	/**
+	 * Decorator for registering a command argument.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the argument.
+	 * @param props Additional options for the argument.
+	 */
+	public static arg(
+		name?: string,
+		props: Omit<Partial<CommandArgumentProps>, 'name'> = {}
+	): PropertyDecorator {
+		return function (target, propertyKey) {
+			const args: CommandArgumentMetadata[] =
+				Reflect.getMetadata(COMMAND_ARGUMENTS_METADATA, target.constructor) ?? [];
+
+			const propertyType = Reflect.getMetadata('design:type', target, propertyKey);
+
+			// Infer argument type from property type if not explicitly specified
+			let inferredType = props.type;
+
+			if (!inferredType && propertyType) {
+				if (propertyType === Array) {
+					inferredType = CommandArgumentType.ARRAY;
+
+					if (!props.arrayType) {
+						props = {
+							...props,
+							arrayType: CommandArgumentType.STRING
+						};
+					}
+				} else if (propertyType.constructor !== Object) {
+					switch (propertyType.name.toLowerCase()) {
+						case 'number':
+							inferredType = CommandArgumentType.NUMBER;
+							break;
+						case 'boolean':
+							inferredType = CommandArgumentType.BOOLEAN;
+							break;
+						case 'string':
+							inferredType = CommandArgumentType.STRING;
+							break;
+						default:
+							inferredType = CommandArgumentType.STRING; // Default to string for unknown types
+					}
+				}
+				// Check if it's an enum by examining if the property type has values
+				else if (Object.values(propertyType).length > 0) {
+					inferredType = CommandArgumentType.ENUM;
+
+					if (!props.enum) {
+						props = {
+							...props,
+							enum: Object.values(propertyType)
+						};
+					}
+				}
+			}
+
+			args.push({
+				name: name ?? (propertyKey as string),
+				description: props.description,
+				required: props.required ?? false,
+				default: props.default,
+				type: inferredType,
+				enum: props.enum,
+				arrayType: props.arrayType,
+				propertyKey: propertyKey as string
+			});
+
+			Reflect.defineMetadata(COMMAND_ARGUMENTS_METADATA, args, target.constructor);
+		};
+	}
 
 	/**
 	 * The command entry point. This method is called when the command is executed using the CLI.
@@ -664,7 +664,7 @@ class CommandProgressBar extends InteractsWithConsole {
 		this.newLine();
 
 		// Display the message
-		this.write(message, false);
+		this.write(message);
 
 		// Redraw the progress bar
 		this.update(0);

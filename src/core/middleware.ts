@@ -1,7 +1,6 @@
 import type { Elysia } from 'elysia';
 import type { Class } from 'type-fest';
-import type { Context } from './http';
-import type { Route } from './utils';
+import type { Context, Route } from './http';
 
 import { Application } from './app';
 import { Service } from './service';
@@ -62,31 +61,33 @@ export const applyMiddlewares = (middlewares: Class<Middleware>[], plugin: Elysi
 };
 
 /**
- * Registers a list of middlewares to be applied on a controller or endpoint.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param middlewares The list of middlewares to apply.
- */
-export const middleware = (
-	...middlewares: Class<Middleware>[]
-): ClassDecorator & MethodDecorator => {
-	return function (target: Object, propertyKey?: string | symbol, descriptor?: PropertyDescriptor) {
-		if (propertyKey === undefined && descriptor === undefined) {
-			const m = Reflect.getMetadata(Symbols.middlewares, target) ?? [];
-			m.push(...middlewares);
-			Reflect.defineMetadata(Symbols.middlewares, m, target);
-		} else {
-			const m = Reflect.getMetadata(Symbols.middlewares, target, propertyKey!) ?? [];
-			m.push(...middlewares);
-			Reflect.defineMetadata(Symbols.middlewares, m, target, propertyKey!);
-		}
-	};
-};
-
-/**
  * Base class for middleware.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export abstract class Middleware {
+	/**
+	 * Registers a list of middlewares to be applied on a controller or endpoint.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param middlewares The list of middlewares to apply.
+	 */
+	public static register(...middlewares: Class<Middleware>[]): ClassDecorator & MethodDecorator {
+		return function (
+			target: Object,
+			propertyKey?: string | symbol,
+			descriptor?: PropertyDescriptor
+		) {
+			if (propertyKey === undefined && descriptor === undefined) {
+				const m = Reflect.getMetadata(Symbols.middlewares, target) ?? [];
+				m.push(...middlewares);
+				Reflect.defineMetadata(Symbols.middlewares, m, target);
+			} else {
+				const m = Reflect.getMetadata(Symbols.middlewares, target, propertyKey!) ?? [];
+				m.push(...middlewares);
+				Reflect.defineMetadata(Symbols.middlewares, m, target, propertyKey!);
+			}
+		};
+	}
+
 	/**
 	 * Called after the request has been handled, but before the response is sent.
 	 * @param ctx The request context.

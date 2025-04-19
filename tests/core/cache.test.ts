@@ -4,10 +4,9 @@ import { beforeEach, describe, expect, it, Mock, mock, spyOn } from 'bun:test';
 import { createCache } from 'cache-manager';
 import * as KV from 'keyv';
 
-import { app, Application } from '../../src/core/app';
-import { Event } from '../../src/core/event';
+import { Application } from '../../src/core/app';
 
-@app({
+@Application.register({
 	redis: {
 		default: 'cache',
 		connections: {

@@ -1,6 +1,6 @@
-import { Job, job } from './core/job';
+import { Job } from '../src/core/job';
 
-@job({ queue: 'email', name: 'send-email' })
+@Job.register({ queue: 'email', name: 'send-email' })
 export class EmailJob extends Job {
 	constructor(
 		private readonly recipient: string,

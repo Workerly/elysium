@@ -1,7 +1,5 @@
 import type { Elysia } from 'elysia';
 
-export type Route = `/${string}`;
-
 export namespace Symbols {
 	export const app = Symbol('app');
 

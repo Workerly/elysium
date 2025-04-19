@@ -212,8 +212,8 @@ export class Worker extends InteractsWithConsole {
 		});
 
 		// Handle unhandled promise rejections
-		thread.addEventListener('unhandledrejection', (e) => {
-			worker.trace(e.reason, `Worker ${worker.id} unhandled rejection:`);
+		thread.addEventListener('unhandledrejection', (e: any) => {
+			worker.trace(e, `Worker ${worker.id} unhandled rejection:`);
 		});
 
 		// Report that the worker is ready

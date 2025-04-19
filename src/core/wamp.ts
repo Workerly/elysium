@@ -1,20 +1,25 @@
 import type { Class } from 'type-fest';
 
+import { Elysia } from 'elysia';
 import { omit } from 'radash';
+// @ts-expect-error The Wampy type definitions are not up to date
 import Wampy from 'wampy';
 
 import { Event } from './event';
 import { Service } from './service';
-import { Symbols } from './utils';
+import { nextTick, Symbols } from './utils';
 
 // FIXME: Temporary solution for Bun to properly fill the protocol field. Remove this once oven-sh/bun#18744 is fixed.
 class WampWebsocket extends WebSocket {
-	public constructor(url: string, protocols?: string | string[]) {
+	public constructor(
+		url: string,
+		private readonly protocols?: string | string[]
+	) {
 		super(url, protocols);
 	}
 
 	public get protocol(): string {
-		return 'wamp.2.json';
+		return this.protocols?.[0] ?? 'wamp.2.json';
 	}
 }
 
@@ -174,182 +179,196 @@ type WampSubscription = {
 	handler: WampSubscriptionHandler;
 };
 
-/**
- * Marks a class as a WAMP controller.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param options The decorator options.
- */
-export const wamp = (options: WampProps) => {
-	return function (target: Class<any>) {
-		// TODO: Use the logger service here
-		console.log(`Registering Wamp route for ${options.url} using ${target.name}`);
-
-		const controller = Service.make(target);
-
-		const metadata = Reflect.getMetadata(Symbols.wamp, target) ?? {};
-
-		const w = new Wampy(options.url, {
-			ws: WampWebsocket,
-			...omit(options, ['url']),
-			onClose: metadata.close?.bind(controller),
-			onError() {
-				metadata.error?.call(controller);
-				// TODO: Add more details like controller name and url
-				Event.emit('elysium:error', new Error('Wamp connection error'));
-			},
-			onReconnect: metadata.reconnect?.bind(controller),
-			onReconnectSuccess: metadata.reconnectSuccess?.bind(controller)
-		});
-
-		const registrations: WampRegistration[] = metadata.registrations ?? [];
-		const subscriptions: WampSubscription[] = metadata.subscriptions ?? [];
-
-		for (const registration of registrations) {
-			w.register(
-				registration.topic,
-				registration.handler.bind(controller),
-				registration.options
-			).then((r: { topic: string; requestId: string; registrationId: string }) => {
+export namespace Wamp {
+	/**
+	 * Marks a class as a WAMP controller.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param options The decorator options.
+	 */
+	export const controller = (options: WampProps) => {
+		return function (target: Class<any>) {
+			async function handleWamp(): Promise<Elysia> {
 				// TODO: Use the logger service here
-				console.log(`Registered ${registration.topic} with id ${r.registrationId}`);
-			});
-		}
+				console.log(`Registering Wamp route for ${options.url} using ${target.name}`);
+				await nextTick();
 
-		for (const subscription of subscriptions) {
-			w.subscribe(
-				subscription.topic,
-				subscription.handler.bind(controller),
-				subscription.options
-			).then(
-				(s: {
-					topic: string;
-					requestId: string;
-					subscriptionId: string;
-					subscriptionKey: string;
-				}) => {
-					// TODO: Use the logger service here
-					console.log(`Subscribed ${subscription.topic} with id ${s.subscriptionId}`);
+				const controller = Service.make(target);
+
+				const metadata = Reflect.getMetadata(Symbols.wamp, target) ?? {};
+
+				const w = new Wampy(options.url, {
+					ws: WampWebsocket,
+					...omit(options, ['url']),
+					onClose: metadata.close?.bind(controller),
+					onError() {
+						metadata.error?.call(controller);
+						// TODO: Add more details like controller name and url
+						Event.emit('elysium:error', new Error('Wamp connection error'));
+					},
+					onReconnect: metadata.reconnect?.bind(controller),
+					onReconnectSuccess: metadata.reconnectSuccess?.bind(controller)
+				});
+
+				const registrations: WampRegistration[] = metadata.registrations ?? [];
+				const subscriptions: WampSubscription[] = metadata.subscriptions ?? [];
+
+				for (const registration of registrations) {
+					w.register(
+						registration.topic,
+						registration.handler.bind(controller),
+						registration.options
+					).then((r: { topic: string; requestId: string; registrationId: string }) => {
+						// TODO: Use the logger service here
+						console.log(`Registered ${registration.topic} with id ${r.registrationId}`);
+					});
 				}
-			);
-		}
 
-		w.connect().then(metadata.open?.bind(controller));
+				for (const subscription of subscriptions) {
+					w.subscribe(
+						subscription.topic,
+						subscription.handler.bind(controller),
+						subscription.options
+					).then(
+						(s: {
+							topic: string;
+							requestId: string;
+							subscriptionId: string;
+							subscriptionKey: string;
+						}) => {
+							// TODO: Use the logger service here
+							console.log(`Subscribed ${subscription.topic} with id ${s.subscriptionId}`);
+						}
+					);
+				}
+
+				const app = new Elysia();
+
+				app.onStart(async (elysia) => {
+					await w.connect();
+					metadata.open?.call(controller);
+				});
+
+				return app;
+			}
+
+			Reflect.defineMetadata(Symbols.elysiaPlugin, handleWamp, target);
+		};
 	};
-};
 
-/**
- * Registers a method as a WAMP RPC.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param topic The RPC topic to register.
- * @param options The registration options.
- */
-export const register = (topic: string, options?: WampRegistrationOptions): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+	/**
+	 * Registers a method as a WAMP RPC.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param topic The RPC topic to register.
+	 * @param options The registration options.
+	 */
+	export const register = (topic: string, options?: WampRegistrationOptions): MethodDecorator => {
+		return function (target, propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 
-		metadata.registrations ??= [];
-		metadata.registrations.push({
-			topic,
-			options,
-			handler: descriptor.value as WampRegistrationHandler
-		});
+			metadata.registrations ??= [];
+			metadata.registrations.push({
+				topic,
+				options,
+				handler: descriptor.value as WampRegistrationHandler
+			});
 
-		Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
 	};
-};
 
-/**
- * Subscribes to a WAMP topic.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param topic The topic to subscribe to.
- * @param options The subscription options.
- */
-export const subscribe = (topic: string, options?: WampSubscriptionOptions): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+	/**
+	 * Subscribes to a WAMP topic.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param topic The topic to subscribe to.
+	 * @param options The subscription options.
+	 */
+	export const subscribe = (topic: string, options?: WampSubscriptionOptions): MethodDecorator => {
+		return function (target, propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 
-		metadata.subscriptions ??= [];
-		metadata.subscriptions.push({
-			topic,
-			options,
-			handler: descriptor.value as WampRegistrationHandler
-		});
+			metadata.subscriptions ??= [];
+			metadata.subscriptions.push({
+				topic,
+				options,
+				handler: descriptor.value as WampRegistrationHandler
+			});
 
-		Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
 	};
-};
 
-/**
- * Marks a method as the WAMP "open" event handler.
- * @author Axel Nana <axel.nana@workbud.com>
- *
- * This decorator should be used on a WAMP controller method. Only one "open" event handler
- * can be defined per WAMP controller.
- */
-export const onOpen = (): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-		metadata.open = descriptor.value;
-		Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+	/**
+	 * Marks a method as the WAMP "open" event handler.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
+	 * This decorator should be used on a WAMP controller method. Only one "open" event handler
+	 * can be defined per WAMP controller.
+	 */
+	export const onOpen = (): MethodDecorator => {
+		return function (target, propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+			metadata.open = descriptor.value;
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
 	};
-};
 
-/**
- * Marks a method as the WAMP "close" event handler.
- * @author Axel Nana <axel.nana@workbud.com>
- *
- * This decorator should be used on a WAMP controller method. Only one "close" event handler
- * can be defined per WAMP controller.
- */
-export const onClose = (): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-		metadata.close = descriptor.value;
-		Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+	/**
+	 * Marks a method as the WAMP "close" event handler.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
+	 * This decorator should be used on a WAMP controller method. Only one "close" event handler
+	 * can be defined per WAMP controller.
+	 */
+	export const onClose = (): MethodDecorator => {
+		return function (target, propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+			metadata.close = descriptor.value;
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
 	};
-};
 
-/**
- * Marks a method as the WAMP "error" event handler.
- * @author Axel Nana <axel.nana@workbud.com>
- *
- * This decorator should be used on a WAMP controller method. Only one "error" event handler
- * can be defined per WAMP controller.
- */
-export const onError = (): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-		metadata.error = descriptor.value;
-		Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+	/**
+	 * Marks a method as the WAMP "error" event handler.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
+	 * This decorator should be used on a WAMP controller method. Only one "error" event handler
+	 * can be defined per WAMP controller.
+	 */
+	export const onError = (): MethodDecorator => {
+		return function (target, propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+			metadata.error = descriptor.value;
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
 	};
-};
 
-/**
- * Marks a method as the WAMP "reconnect" event handler.
- * @author Axel Nana <axel.nana@workbud.com>
- *
- * This decorator should be used on a WAMP controller method. Only one "reconnect" event handler
- * can be defined per WAMP controller.
- */
-export const onReconnect = (): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-		metadata.reconnect = descriptor.value;
-		Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+	/**
+	 * Marks a method as the WAMP "reconnect" event handler.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
+	 * This decorator should be used on a WAMP controller method. Only one "reconnect" event handler
+	 * can be defined per WAMP controller.
+	 */
+	export const onReconnect = (): MethodDecorator => {
+		return function (target, propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+			metadata.reconnect = descriptor.value;
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
 	};
-};
 
-/**
- * Marks a method as the WAMP "reconnectSuccess" event handler.
- * @author Axel Nana <axel.nana@workbud.com>
- *
- * This decorator should be used on a WAMP controller method. Only one "reconnectSuccess" event handler
- * can be defined per WAMP controller.
- */
-export const onReconnectSuccess = (): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-		metadata.reconnectSuccess = descriptor.value;
-		Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+	/**
+	 * Marks a method as the WAMP "reconnectSuccess" event handler.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
+	 * This decorator should be used on a WAMP controller method. Only one "reconnectSuccess" event handler
+	 * can be defined per WAMP controller.
+	 */
+	export const onReconnectSuccess = (): MethodDecorator => {
+		return function (target, propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+			metadata.reconnectSuccess = descriptor.value;
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
 	};
-};
+}

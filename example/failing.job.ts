@@ -1,6 +1,6 @@
-import { Job, job } from './core/job';
+import { Job } from '../src/core/job';
 
-@job({ name: 'failing-job' })
+@Job.register()
 export class FailingJob extends Job {
 	constructor(private readonly autoCancel: boolean) {
 		super();

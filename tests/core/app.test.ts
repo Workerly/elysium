@@ -2,18 +2,18 @@ import 'reflect-metadata';
 
 import type { Mock } from 'bun:test';
 import type { AppContext } from '../../src/core/app';
-import type { Route } from '../../src/core/utils';
+import type { Route } from '../../src/core/http';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
 
-import { app, Application } from '../../src/core/app';
+import { Application } from '../../src/core/app';
 import { Database } from '../../src/core/database';
 import { Event } from '../../src/core/event';
 import { Middleware } from '../../src/core/middleware';
-import { module, Module } from '../../src/core/module';
+import { Module } from '../../src/core/module';
 import { Redis } from '../../src/core/redis';
 import { Service } from '../../src/core/service';
 import { nextTick, Symbols } from '../../src/core/utils';
@@ -61,14 +61,14 @@ mock.module('../../src/core/event', () => ({
 }));
 
 // Test decorator
-describe('@app decorator', () => {
+describe('@Application.register decorator', () => {
 	afterAll(() => {
 		mock.restore();
 	});
 
 	it('should set metadata on the target class', () => {
 		// Create a test class
-		@app({
+		@Application.register({
 			debug: true,
 			modules: [],
 			commands: []
@@ -107,7 +107,7 @@ describe('Application class', () => {
 	describe('constructor', () => {
 		it('should register the application instance in the service container', () => {
 			// Create a test class
-			@app({
+			@Application.register({
 				debug: true
 			})
 			class TestApp extends Application {}
@@ -121,7 +121,7 @@ describe('Application class', () => {
 
 		it('should set debug mode from app props', () => {
 			// Create a test class with debug mode enabled
-			@app({
+			@Application.register({
 				debug: true
 			})
 			class TestApp extends Application {}
@@ -135,7 +135,7 @@ describe('Application class', () => {
 
 		it('should register Redis connections if provided', () => {
 			// Create a test class with Redis configuration
-			@app({
+			@Application.register({
 				redis: {
 					default: 'main',
 					connections: {
@@ -158,7 +158,7 @@ describe('Application class', () => {
 
 		it('should register Database connections if provided', () => {
 			// Create a test class with Database configuration
-			@app({
+			@Application.register({
 				database: {
 					default: 'main',
 					connections: {
@@ -181,7 +181,7 @@ describe('Application class', () => {
 
 		it('should emit an event when the application is launched', async () => {
 			// Create a test class
-			@app()
+			@Application.register()
 			class TestApp extends Application {
 				// Override run to avoid actual execution
 				protected async run(): Promise<void> {
@@ -247,7 +247,7 @@ describe('Application class', () => {
 	describe('getters and setters', () => {
 		it('should get and set debug mode', () => {
 			// Create a test class
-			@app({
+			@Application.register({
 				debug: false
 			})
 			class TestApp extends Application {
@@ -272,7 +272,7 @@ describe('Application class', () => {
 
 		it('should get the Elysia instance', () => {
 			// Create a test class
-			@app()
+			@Application.register()
 			class TestApp extends Application {
 				// Override run to directly call commandServe to initialize Elysia
 				protected async run(): Promise<void> {
@@ -292,7 +292,7 @@ describe('Application class', () => {
 	describe('lifecycle hooks', () => {
 		it('should call onStart when the server starts', async () => {
 			// Create a test class with an overridden onStart method
-			@app()
+			@Application.register()
 			class TestApp extends Application {
 				protected async onStart(elysia: Elysia<Route>): Promise<void> {}
 
@@ -323,7 +323,7 @@ describe('Application class', () => {
 
 		it('should call onStop when the server stops', async () => {
 			// Create a test class with an overridden onStop method
-			@app()
+			@Application.register()
 			class TestApp extends Application {
 				protected async onStop(elysia: Elysia<Route>): Promise<void> {
 					// Do nothing
@@ -354,7 +354,7 @@ describe('Application class', () => {
 
 		it('should call onError when an error occurs', async () => {
 			// Create a test class with an overridden onError method
-			@app()
+			@Application.register()
 			class TestApp extends Application {
 				protected async onError(e: any): Promise<boolean> {
 					return true;
@@ -386,14 +386,14 @@ describe('Application class', () => {
 
 	describe('module registration', () => {
 		it('should register modules correctly', async () => {
-			@module()
+			@Module.register()
 			class TestModule1 extends Module {}
 
-			@module()
+			@Module.register()
 			class TestModule2 extends Module {}
 
 			// Create a test class with modules
-			@app({
+			@Application.register({
 				modules: [TestModule1, TestModule2]
 			})
 			class TestApp extends Application {
@@ -436,7 +436,7 @@ describe('Application class', () => {
 				const mockMiddlewares = [Middleware1, Middleware2];
 
 				// Set middlewares metadata
-				@app()
+				@Application.register()
 				class TestApp extends Application {
 					// Override run to directly call commandServe
 					protected async run(): Promise<void> {
@@ -466,8 +466,8 @@ describe('Application class', () => {
 	describe('command methods', () => {
 		it('should handle the serve command', async () => {
 			// Create a test class
-			@app({
-				server: { port: 8000 },
+			@Application.register({
+				server: { port: 3131 },
 				modules: [],
 				swagger: false
 			})
@@ -489,7 +489,7 @@ describe('Application class', () => {
 			await nextTick();
 
 			// Check if Elysia was initialized correctly
-			expect(instance.elysia.listen).toHaveBeenCalledWith(8000);
+			expect(instance.elysia.listen).toHaveBeenCalledWith(3131);
 		});
 
 		it('should handle the exec command', async () => {
@@ -509,7 +509,7 @@ describe('Application class', () => {
 			(Service.make as Mock<typeof Service.make>).mockReturnValueOnce(mockCommandInstance);
 
 			// Create a test class
-			@app({
+			@Application.register({
 				commands: [mockCommand as any]
 			})
 			class TestApp extends Application {
@@ -542,7 +542,7 @@ describe('Application class', () => {
 			}));
 
 			// Create a test class with a public commandWork method
-			@app()
+			@Application.register()
 			class TestApp extends Application {
 				// Make commandWork public for testing
 				protected async run(): Promise<void> {
@@ -574,7 +574,7 @@ describe('Application class', () => {
 			});
 
 			// Create a test class
-			@app({
+			@Application.register({
 				commands: mockCommands as any
 			})
 			class TestApp extends Application {
@@ -628,7 +628,7 @@ describe('Application class', () => {
 				process.argv = ['bun', 'styx', 'help', 'test'];
 
 				// Create a test class with a modified run method
-				@app({
+				@Application.register({
 					commands: [mockCommand as any]
 				})
 				class TestApp extends Application {}
@@ -662,7 +662,7 @@ describe('Application class', () => {
 			});
 
 			// Create a test class
-			@app({
+			@Application.register({
 				commands: [mockCommand as any]
 			})
 			class TestApp extends Application {

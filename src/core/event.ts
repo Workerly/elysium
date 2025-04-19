@@ -1,5 +1,7 @@
 import { EventEmitter } from 'node:events';
 
+import { isString } from 'radash';
+
 /**
  * Internal event bus used by the framework.
  * @author Axel Nana <axel.nana@workbud.com>
@@ -69,66 +71,6 @@ export type ListenProps = {
 	prepend?: boolean;
 };
 
-/**
- * Marks a method as an event listener.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param options The decorator options.
- */
-export const on = (options: Omit<ListenProps, 'mode'>): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const listener = async function (eventData: EventData<any>) {
-			try {
-				await (descriptor.value as EventHandler<any>)(eventData);
-			} catch (e: unknown) {
-				EventBus.instance.emitError(e);
-			}
-		};
-
-		const prepend = options.prepend ?? false;
-		if (prepend) {
-			EventBus.instance.prependListener(options.event, listener);
-		} else {
-			EventBus.instance.on(options.event, listener);
-		}
-	};
-};
-
-/**
- * Marks a method as an event listener that listens for the event only once.
- * @author Axel Nana <axel.nana@workbud.com>
- * @param options The decorator options.
- */
-export const once = (options: Omit<ListenProps, 'mode'>): MethodDecorator => {
-	return function (target, propertyKey, descriptor) {
-		const prepend = options.prepend ?? false;
-		if (prepend) {
-			EventBus.instance.prependOnceListener(
-				options.event,
-				descriptor.value as EventHandler<any, typeof target>
-			);
-		} else {
-			EventBus.instance.once(options.event, descriptor.value as EventHandler<any, typeof target>);
-		}
-	};
-};
-
-/**
- * Marks a method as an event listener.
- * @param options The decorator options.
- */
-export const listen = (options: ListenProps): MethodDecorator => {
-	if (options.mode === 'on') {
-		return on(options);
-	} else if (options.mode === 'once') {
-		return once(options);
-	}
-
-	return function (target, propertyKey, descriptor) {
-		// TODO: Use logger service
-		console.error("Unknown mode provided to @listen. Use either 'on' or 'once'.");
-	};
-};
-
 export namespace Event {
 	/**
 	 * Emits an event with the provided data and source.
@@ -146,17 +88,55 @@ export namespace Event {
 	};
 
 	/**
+	 * Marks a method as an event listener.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param options The decorator options.
+	 */
+	export function on(options: Omit<ListenProps, 'mode'>): MethodDecorator;
+
+	/**
 	 * Registers an event listener for the specified event.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param event The event name.
 	 * @param handler The event handler function.
 	 */
-	export const on = <TData, TSource = any>(
+	export function on<TData, TSource = any>(
 		event: string,
 		handler: EventHandler<TData, TSource>
-	): void => {
-		EventBus.instance.on(event, handler);
-	};
+	): void;
+
+	export function on<TData, TSource = any>(
+		event: string | Omit<ListenProps, 'mode'>,
+		handler?: EventHandler<TData, TSource> | never
+	): MethodDecorator | void {
+		if (isString(event)) {
+			EventBus.instance.on(event, handler!);
+		} else {
+			return function (target, propertyKey, descriptor) {
+				const listener = async function (eventData: EventData<any>) {
+					try {
+						await (descriptor.value as EventHandler<any>)(eventData);
+					} catch (e: unknown) {
+						EventBus.instance.emitError(e);
+					}
+				};
+
+				const prepend = event.prepend ?? false;
+				if (prepend) {
+					EventBus.instance.prependListener(event.event, listener);
+				} else {
+					EventBus.instance.on(event.event, listener);
+				}
+			};
+		}
+	}
+
+	/**
+	 * Marks a method as an event listener that listens for the event only once.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param options The decorator options.
+	 */
+	export function once(options: Omit<ListenProps, 'mode'>): MethodDecorator;
 
 	/**
 	 * Registers an event listener for the specified event that listens for the event only once.
@@ -164,12 +144,36 @@ export namespace Event {
 	 * @param event The event name.
 	 * @param handler The event handler function.
 	 */
-	export const once = <TData, TSource = any>(
+	export function once<TData, TSource = any>(
 		event: string,
 		handler: EventHandler<TData, TSource>
-	): void => {
-		EventBus.instance.once(event, handler);
-	};
+	): void;
+
+	export function once<TData, TSource = any>(
+		event: string | Omit<ListenProps, 'mode'>,
+		handler?: EventHandler<TData, TSource> | never
+	): MethodDecorator | void {
+		if (isString(event)) {
+			EventBus.instance.once(event, handler!);
+		} else {
+			return function (target, propertyKey, descriptor) {
+				const listener = async function (eventData: EventData<any>) {
+					try {
+						await (descriptor.value as EventHandler<any>)(eventData);
+					} catch (e: unknown) {
+						EventBus.instance.emitError(e);
+					}
+				};
+
+				const prepend = event.prepend ?? false;
+				if (prepend) {
+					EventBus.instance.prependOnceListener(event.event, listener);
+				} else {
+					EventBus.instance.once(event.event, listener);
+				}
+			};
+		}
+	}
 
 	/**
 	 * Removes all event listeners for the specified event.
@@ -178,5 +182,22 @@ export namespace Event {
 	 */
 	export const off = (event: string): void => {
 		EventBus.instance.removeAllListeners(event);
+	};
+
+	/**
+	 * Marks a method as an event listener.
+	 * @param options The decorator options.
+	 */
+	export const listen = (options: ListenProps): MethodDecorator => {
+		if (options.mode === 'on') {
+			return on(options);
+		} else if (options.mode === 'once') {
+			return once(options);
+		}
+
+		return function (target, propertyKey, descriptor) {
+			// TODO: Use logger service
+			console.error("Unknown mode provided to @listen. Use either 'on' or 'once'.");
+		};
 	};
 }

@@ -2,7 +2,7 @@
 
 import 'reflect-metadata';
 
-import { App } from './src';
+import { App } from './example';
 
 // Start the application
 new App();
