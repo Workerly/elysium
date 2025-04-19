@@ -107,7 +107,8 @@ class UserController {
 	@Http.get({
 		response: t.Array(UserModel.selectSchema),
 		operationId: 'users.list',
-		description: 'Get all users'
+		description: 'Get all users',
+		transactional: true
 	})
 	private async list(
 		@mo() module: InstanceType<Class<MainModule>>,
@@ -125,7 +126,8 @@ class UserController {
 	}
 
 	@Http.del({ response: t.Array(UserModel.selectSchema) })
-	private deleteAll() {
+	private async deleteAll(@Http.context() c: Context) {
+		await Cache.memory.del(`${c.tenant}:users:list`);
 		return this.userService.userRepository.deleteAll();
 	}
 

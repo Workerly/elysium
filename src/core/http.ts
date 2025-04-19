@@ -100,6 +100,14 @@ type HttpRequestHandlerMetadata = {
 	 * The list of services injected in the handler.
 	 */
 	services: Array<{ name: string; index: number }>;
+
+	/**
+	 * Whether the request handler is transactional.
+	 *
+	 * If set to `true`, a new transaction will be created and all the database
+	 * queries running for that handler will be wrapped in that transaction.
+	 */
+	transactional?: boolean;
 };
 
 /**
@@ -108,7 +116,7 @@ type HttpRequestHandlerMetadata = {
  */
 type HttpRequestHandlerRegistrationProps = Pick<
 	HttpRequestHandlerMetadata,
-	'path' | 'method' | 'handler' | 'response' | 'operationId' | 'description'
+	'path' | 'method' | 'handler' | 'response' | 'operationId' | 'description' | 'transactional'
 > & {
 	target: Object;
 	propertyKey: string | symbol;
@@ -155,7 +163,8 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 		Reflect.getMetadata(Symbols.middlewares, props.target, props.propertyKey) ?? [];
 	const services = Reflect.getMetadata(Symbols.services, props.target, props.propertyKey) ?? [];
 
-	const { path, method, handler, target, response, operationId, description } = props;
+	const { path, method, handler, target, response, operationId, description, transactional } =
+		props;
 
 	const metadata: HttpRequestHandlerMetadata[] =
 		Reflect.getMetadata(Symbols.http, target.constructor) ?? [];
@@ -173,7 +182,8 @@ const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) 
 		response,
 		operationId,
 		description,
-		services
+		services,
+		transactional
 	});
 
 	Reflect.defineMetadata(Symbols.http, metadata, target.constructor);
@@ -199,7 +209,7 @@ export enum HttpControllerScope {
  * Properties required when declaring an HTTP controller using the `@http()` decorator.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type HttpProps = {
+export type HttpControllerProps = {
 	/**
 	 * The path of the HTTP route.
 	 */
@@ -216,6 +226,12 @@ export type HttpProps = {
 	 * Used in Swagger documentation.
 	 */
 	tags?: Array<string>;
+
+	/**
+	 * Whether to create a database transaction for all the queries executed
+	 * for all the request handlers in this controller.
+	 */
+	transactional?: boolean;
 };
 
 /**
@@ -249,6 +265,12 @@ export type RequestHandlerDecoratorProps = {
 	 * Used in Swagger documentation.
 	 */
 	description?: string;
+
+	/**
+	 * Whether to create a database transaction for all the queries executed
+	 * for this request handler.
+	 */
+	transactional?: boolean;
 };
 
 export namespace Http {
@@ -257,7 +279,7 @@ export namespace Http {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param props The decorator options.
 	 */
-	export const controller = (props: HttpProps = { path: '/' }) => {
+	export const controller = (props: HttpControllerProps = { path: '/' }) => {
 		return function (target: Class<any>) {
 			async function handleHttp(): Promise<Elysia<Route>> {
 				// TODO: Use the logger service here
@@ -333,23 +355,44 @@ export namespace Http {
 
 					const isGenerator = route.handler.constructor.name.includes('GeneratorFunction');
 					const isSSE = route.method === 'elysium:SSE';
+					const isTransactional = route.transactional ?? props.transactional ?? false;
 
 					route.method = isSSE ? 'GET' : route.method;
 
 					const getHandler = () => {
 						const initTransactedHandler = (c: Context) => {
 							const controller = c.controller;
+
+							if (isTransactional) {
+								return function (...args: unknown[]) {
+									return Database.getDefaultConnection().transaction((tx) => {
+										return Application.context.run(
+											new Map([
+												['tenant', c.tenant],
+												['http:context', c],
+												['db:tx', tx]
+											]),
+											() => {
+												try {
+													return route.handler.call(controller, ...args) as Promise<unknown>;
+												} catch (e) {
+													tx.rollback();
+													throw e;
+												}
+											}
+										);
+									});
+								};
+							}
+
 							return function (...args: unknown[]) {
-								return Database.getDefaultConnection().transaction((tx) => {
-									return Application.context.run(
-										new Map([
-											['tenant', c.tenant],
-											['http:context', c],
-											['db:tx', tx]
-										]),
-										() => route.handler.call(controller, ...args) as Promise<unknown>
-									);
-								});
+								return Application.context.run(
+									new Map([
+										['tenant', c.tenant],
+										['http:context', c]
+									]),
+									() => route.handler.call(controller, ...args) as Promise<unknown>
+								);
 							};
 						};
 
