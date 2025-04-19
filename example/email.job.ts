@@ -1,3 +1,5 @@
+import { random } from 'radash';
+
 import { Job } from '../src/core/job';
 
 @Job.register({ queue: 'email', name: 'send-email' })
@@ -11,7 +13,7 @@ export class EmailJob extends Job {
 
 	protected async execute(): Promise<void> {
 		this.info(`Sending email to ${this.recipient}`);
-		await Bun.sleep(5000);
+		await Bun.sleep(random(5000, 10000));
 		this.success('Email sent successfully with message: ' + this.message);
 	}
 }

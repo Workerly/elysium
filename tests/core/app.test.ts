@@ -88,16 +88,27 @@ describe('@Application.register decorator', () => {
 describe('Application class', () => {
 	// Mock process.exit to prevent tests from exiting
 	const originalExit = process.exit;
+	const originalStdoutWrite = process.stdout.write;
+
+	let output = '';
 
 	// Reset mocks before each test
 	beforeEach(() => {
 		process.exit = mock() as any;
 		mock.restore();
+
+		process.stdout.write = mock((message) => {
+			output += message;
+			return true;
+		});
 	});
 
 	afterEach(() => {
 		process.exit = originalExit;
+		process.stdout.write = originalStdoutWrite;
+
 		Service.clear();
+		output = '';
 	});
 
 	afterAll(() => {
@@ -277,7 +288,7 @@ describe('Application class', () => {
 				// Override run to directly call commandServe to initialize Elysia
 				protected async run(): Promise<void> {
 					// @ts-expect-error The commandServe method is private
-					await this.commandServe();
+					return this.commandServe();
 				}
 			}
 
@@ -537,7 +548,7 @@ describe('Application class', () => {
 			// Mock the Worker module
 			mock.module('../../src/core/worker', () => ({
 				Worker: {
-					spawn: mock()
+					spawn: mock().mockReturnThis()
 				}
 			}));
 

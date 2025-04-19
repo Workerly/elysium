@@ -73,7 +73,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public info(message: string): void {
-		this.write(`ℹ️ ${message}`);
+		this.write(`ℹ️  ${message}`);
 	}
 
 	/**
@@ -89,7 +89,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public warning(message: string): void {
-		this.write(`⚠️ ${message}`);
+		this.write(`⚠️  ${message}`);
 	}
 
 	/**

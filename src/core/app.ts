@@ -317,14 +317,16 @@ export abstract class Application extends InteractsWithConsole {
 			.map((queue) => queue.split(','))
 			.reduce((acc, queues) => acc.concat(queues), []);
 
-		Worker.spawn(self as unknown as globalThis.Worker, queues, {
+		const worker = Worker.spawn(self as unknown as globalThis.Worker, queues, {
 			concurrency: parseInt(values.concurrency, 10),
 			maxRetries: parseInt(values['max-retries'], 10),
 			retryDelay: parseInt(values['retry-delay'], 10),
 			pauseOnError: values['pause-on-error']
 		});
 
-		this.success(`Worker started with queues: ${queues.join(', ')}`);
+		this.success(
+			`Worker process ${this.format(worker.id, ConsoleFormat.GREEN)} started with queues: ${queues.map((q) => this.format(q, ConsoleFormat.CYAN)).join(', ')}`
+		);
 	}
 
 	/**
