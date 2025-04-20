@@ -73,7 +73,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public info(message: string): void {
-		this.write(`ℹ️  ${message}`);
+		this.write(`ℹ️ ${message}`);
 	}
 
 	/**
@@ -89,7 +89,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public warning(message: string): void {
-		this.write(`⚠️  ${message}`);
+		this.write(`⚠️ ${message}`);
 	}
 
 	/**
@@ -317,7 +317,7 @@ export class InteractsWithConsole {
 	 * @param y The y coordinate (row).
 	 */
 	public moveCursor(x: number, y: number): void {
-		process.stdout.cursorTo(x, y);
+		process.stdout.moveCursor(x, y);
 	}
 
 	/**

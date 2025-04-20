@@ -10,6 +10,7 @@ describe('InteractsWithConsole', () => {
 	const originalStderrWrite = process.stderr.write;
 	const originalStdoutClearLine = process.stdout.clearLine;
 	const originalStdoutCursorTo = process.stdout.cursorTo;
+	const originalStdoutMoveCursor = process.stdout.moveCursor;
 	let stdoutOutput = '';
 	let stderrOutput = '';
 
@@ -33,6 +34,7 @@ describe('InteractsWithConsole', () => {
 		process.stderr.write = originalStderrWrite;
 		process.stdout.clearLine = originalStdoutClearLine;
 		process.stdout.cursorTo = originalStdoutCursorTo;
+		process.stdout.moveCursor = originalStdoutMoveCursor;
 	});
 
 	// Test basic output methods
@@ -242,7 +244,7 @@ describe('InteractsWithConsole', () => {
 			console.moveCursor(10, 20);
 
 			// Check that cursorTo was called with the correct coordinates
-			expect(process.stdout.cursorTo).toHaveBeenCalledWith(10, 20);
+			expect(process.stdout.moveCursor).toHaveBeenCalledWith(10, 20);
 		});
 
 		it('should clear the current line', () => {
