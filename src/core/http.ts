@@ -475,8 +475,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const sse = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'elysium:SSE', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'elysium:SSE', path, ...rest });
 	};
 
 	/**
@@ -486,8 +486,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const get = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'GET', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'GET', path, ...rest });
 	};
 
 	/**
@@ -497,8 +497,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const post = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'POST', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'POST', path, ...rest });
 	};
 
 	/**
@@ -508,8 +508,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const put = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'PUT', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'PUT', path, ...rest });
 	};
 
 	/**
@@ -519,8 +519,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const del = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'DELETE', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'DELETE', path, ...rest });
 	};
 
 	/**
@@ -530,8 +530,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const patch = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'PATCH', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'PATCH', path, ...rest });
 	};
 
 	/**
@@ -541,8 +541,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const head = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'HEAD', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'HEAD', path, ...rest });
 	};
 
 	/**
@@ -552,8 +552,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const options = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'OPTIONS', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'OPTIONS', path, ...rest });
 	};
 
 	/**
@@ -563,8 +563,8 @@ export namespace Http {
 	 * @param schema The schema of the response body.
 	 */
 	export const trace = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', response, operationId, description } = props ?? {};
-		return custom({ method: 'TRACE', path, response, operationId, description });
+		const { path = '/', ...rest } = props ?? {};
+		return custom({ method: 'TRACE', path, ...rest });
 	};
 
 	/**
@@ -576,22 +576,16 @@ export namespace Http {
 	 */
 	export const custom = ({
 		path = '/',
-		response,
-		method,
-		operationId,
-		description
+		...rest
 	}: RequestHandlerDecoratorProps & { method: HTTPMethod }): MethodDecorator => {
 		return function (target, propertyKey, descriptor) {
 			process.nextTick(() => {
 				registerHttpRequestHandler({
 					path,
-					method,
 					handler: descriptor.value as HttpRequestHandler,
 					target,
 					propertyKey,
-					response,
-					operationId,
-					description
+					...rest
 				});
 			});
 		};
