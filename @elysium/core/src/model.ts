@@ -265,6 +265,7 @@ export namespace Tenancy {
 	 * @template T The type of the model class to wrap with the tenant.
 	 * @template TColumnsMap The table columns config.
 	 * @param tenant The name of the tenant.
+	 * @param model The model class that wraps the `PgTable`.
 	 * @returns The drizzle's table schema wrapped by the tenant.
 	 */
 	export const withTenant = <
@@ -301,6 +302,8 @@ export namespace Tenancy {
 	 * @returns A new schema for the given tenant.
 	 */
 	export const registerTenant = (tenant: string) => {
+		if (schemaRegistry.has(tenant)) return schemaRegistry.get(tenant)!;
+
 		const tenantSchema = pgSchema(tenant);
 		schemaRegistry.set(tenant, tenantSchema);
 
