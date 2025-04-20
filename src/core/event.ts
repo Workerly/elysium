@@ -185,6 +185,14 @@ export namespace Event {
 	};
 
 	/**
+	 * Removes all event listeners.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 */
+	export const clear = () => {
+		EventBus.instance.removeAllListeners();
+	};
+
+	/**
 	 * Marks a method as an event listener.
 	 * @param options The decorator options.
 	 */
