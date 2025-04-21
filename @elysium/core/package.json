@@ -2,7 +2,7 @@
 	"name": "@elysium/core",
 	"version": "0.1.0",
 	"license": "Apache-2.0",
-	"description": "A super-powered web framework built on top of Bun and Elysia.",
+	"description": "A super-charged web framework for Bun, built on top of ElysiaJS.",
 	"author": {
 		"name": "Axel Nana",
 		"email": "axel.nana@workbud.com"
