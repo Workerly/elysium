@@ -13,14 +13,13 @@
 // limitations under the License.
 
 import type { Mock } from 'bun:test';
-import type { WampRegistrationHandler, WampSubscriptionHandler } from '../src/wamp';
 
-import { afterAll, afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it, jest, mock, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
+import { last } from 'radash';
 
 import { Event } from '../src/event';
-import { Service } from '../src/service';
-import { nextTick, Symbols } from '../src/utils';
+import { Symbols } from '../src/utils';
 import { Wamp } from '../src/wamp';
 
 // Mock Wampy
@@ -53,21 +52,16 @@ const mockController = {
 	onReconnectSuccessHandler: mock()
 };
 
-// Mock console.log to prevent output during tests
-const originalConsoleLog = console.log;
-console.log = mock();
-
 // Mock Wampy constructor
-mock.module('wampy', () => {
-	return function (...args: any[]) {
+mock.module('wampy', () => ({
+	default: mock(function (...args: any[]) {
 		return mockWampy;
-	};
-});
+	})
+}));
 
 describe('Wamp', () => {
 	afterAll(() => {
 		mock.restore();
-		console.log = originalConsoleLog;
 	});
 
 	beforeEach(() => {
@@ -125,7 +119,7 @@ describe('Wamp', () => {
 			await plugin();
 
 			// Check if Wampy was called with the correct options
-			const Wampy = await import('wampy');
+			const { default: Wampy } = await import('wampy');
 			expect(Wampy).toHaveBeenCalledWith(
 				'ws://localhost:8080/ws',
 				expect.objectContaining({
@@ -149,10 +143,10 @@ describe('Wamp', () => {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, TestWampController);
 
 			// Call the plugin function
-			const app = await plugin();
+			const app: Elysia = await plugin();
 
 			// Trigger the onStart event
-			await app.onStart.handlers[0](app);
+			await app.event.start?.[0].fn(app);
 
 			// Check if connect was called
 			expect(mockWampy.connect).toHaveBeenCalled();
@@ -316,7 +310,7 @@ describe('Wamp', () => {
 			class TestWampController {
 				@Wamp.onOpen()
 				onOpenHandler() {
-					// Handle open event
+					mockController.onOpenHandler();
 				}
 			}
 
@@ -324,10 +318,10 @@ describe('Wamp', () => {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, TestWampController);
 
 			// Call the plugin function
-			const app = await plugin();
+			const app: Elysia = await plugin();
 
 			// Trigger the onStart event
-			await app.onStart.handlers[0](app);
+			await app.event.start?.[0].fn(app);
 
 			// Check if the onOpen handler was called
 			expect(mockController.onOpenHandler).toHaveBeenCalled();
@@ -342,7 +336,7 @@ describe('Wamp', () => {
 			class TestWampController {
 				@Wamp.onClose()
 				onCloseHandler() {
-					// Handle close event
+					mockController.onCloseHandler();
 				}
 			}
 
@@ -361,7 +355,7 @@ describe('Wamp', () => {
 			class TestWampController {
 				@Wamp.onError()
 				onErrorHandler() {
-					// Handle error event
+					mockController.onErrorHandler();
 				}
 			}
 
@@ -380,7 +374,7 @@ describe('Wamp', () => {
 			class TestWampController {
 				@Wamp.onReconnect()
 				onReconnectHandler() {
-					// Handle reconnect event
+					mockController.onReconnectHandler();
 				}
 			}
 
@@ -399,7 +393,7 @@ describe('Wamp', () => {
 			class TestWampController {
 				@Wamp.onReconnectSuccess()
 				onReconnectSuccessHandler() {
-					// Handle reconnect success event
+					mockController.onReconnectSuccessHandler();
 				}
 			}
 
@@ -410,6 +404,12 @@ describe('Wamp', () => {
 		});
 
 		it('should emit an error event when a WAMP error occurs', async () => {
+			// Get the Wampy constructor arguments
+			const { default: Wampy } = await import('wampy');
+			(Wampy as Mock<any>).mockClear();
+
+			const emitSpy = spyOn(Event, 'emit');
+
 			// Create a test class with an error handler
 			@Wamp.controller({
 				url: 'ws://localhost:8080/ws',
@@ -418,7 +418,8 @@ describe('Wamp', () => {
 			class TestWampController {
 				@Wamp.onError()
 				onErrorHandler() {
-					// Handle error event
+					console.log('onErrorHandler !');
+					mockController.onErrorHandler();
 				}
 			}
 
@@ -428,16 +429,14 @@ describe('Wamp', () => {
 			// Call the plugin function
 			await plugin();
 
-			// Get the Wampy constructor arguments
-			const Wampy = await import('wampy');
-			const wampyArgs = (Wampy as Mock<any>).mock.calls[0][1];
+			const wampyArgs = last((Wampy as Mock<any>).mock.calls[0]);
 
 			// Trigger the onError callback
 			wampyArgs.onError();
 
 			// Check if the error handler was called and an event was emitted
 			expect(mockController.onErrorHandler).toHaveBeenCalled();
-			expect(Event.emit).toHaveBeenCalledWith('elysium:error', expect.any(Error));
+			expect(emitSpy).toHaveBeenCalledWith('elysium:error', expect.any(Error));
 		});
 	});
 });

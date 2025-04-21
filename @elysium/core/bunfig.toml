@@ -8,7 +8,7 @@ coverage = true
 # Requires 90% line coverage, 70% function coverage, and 80% statement coverage
 coverageThreshold = { line = 0.9, function = 0.7, statement = 0.8 }
 # Tests files are included in the coverage statistics
-coverageSkipTestFiles = false
+coverageSkipTestFiles = true
 # Use lcov as the coverage reporter
 coverageReporter = ["lcov", "text"]
 # Path the output coverage results

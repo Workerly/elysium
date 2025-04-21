@@ -85,7 +85,7 @@ describe('Module', () => {
 
 	describe('Module initialization', () => {
 		it('should initialize a module with no controllers', async () => {
-			const elysiaSpy = spyOn(E, 'Elysia').mockImplementationOnce(() => mockElysia);
+			const elysiaSpy = spyOn(E, 'Elysia').mockReturnValueOnce(mockElysia);
 
 			// Create a test module class
 			@Module.register()
@@ -193,6 +193,8 @@ describe('Module', () => {
 		});
 
 		it('should apply middlewares to the module', async () => {
+			const elysiaSpy = spyOn(E, 'Elysia').mockReturnValueOnce(mockElysia);
+
 			// Create mock middleware classes
 			class Middleware1 {}
 			class Middleware2 {}

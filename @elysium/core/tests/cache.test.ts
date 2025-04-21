@@ -14,35 +14,22 @@
 
 import type { Mock } from 'bun:test';
 
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { createCache } from 'cache-manager';
 import * as KV from 'keyv';
 
-import { Application } from '../src/app';
-
-@Application.register({
-	redis: {
-		default: 'cache',
-		connections: {
-			cache: { url: process.env.REDIS_TEST_URL! }
-		}
-	}
-})
-class TestApp extends Application {
-	protected async run(): Promise<void> {
-		// @ts-expect-error The commandServe method is private
-		await this.commandServe();
-	}
-}
+import { Cache } from '../src/cache';
+import { Event } from '../src/event';
+import { Redis } from '../src/redis';
 
 // Mock dependencies
 mock.module('cache-manager', () => ({
 	createCache: mock(createCache)
 }));
 
-const { Cache } = await import('../src/cache');
-
-new TestApp();
+Redis.registerConnection('cache', {
+	url: process.env.REDIS_TEST_URL!
+});
 
 // Test the weak cache
 describe('Cache.weak', () => {
@@ -95,6 +82,11 @@ describe('Cache.weak', () => {
 
 // Test the Redis cache
 describe('Cache.redis', () => {
+	beforeAll(() => {
+		Cache.redis.clear();
+		Event.emit('elysium:app:launched', null, null);
+	});
+
 	// Reset mocks before each test
 	beforeEach(() => {
 		mock.restore();

@@ -257,7 +257,7 @@ export namespace Wamp {
 
 				const app = new Elysia();
 
-				app.onStart(async (elysia) => {
+				app.onStart(async (_) => {
 					await w.connect();
 					metadata.open?.call(controller);
 				});
@@ -276,7 +276,7 @@ export namespace Wamp {
 	 * @param options The registration options.
 	 */
 	export const register = (topic: string, options?: WampRegistrationOptions): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 
 			metadata.registrations ??= [];
@@ -297,7 +297,7 @@ export namespace Wamp {
 	 * @param options The subscription options.
 	 */
 	export const subscribe = (topic: string, options?: WampSubscriptionOptions): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 
 			metadata.subscriptions ??= [];
@@ -319,7 +319,7 @@ export namespace Wamp {
 	 * can be defined per WAMP controller.
 	 */
 	export const onOpen = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 			metadata.open = descriptor.value;
 			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
@@ -334,7 +334,7 @@ export namespace Wamp {
 	 * can be defined per WAMP controller.
 	 */
 	export const onClose = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 			metadata.close = descriptor.value;
 			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
@@ -349,7 +349,7 @@ export namespace Wamp {
 	 * can be defined per WAMP controller.
 	 */
 	export const onError = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 			metadata.error = descriptor.value;
 			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
@@ -364,7 +364,7 @@ export namespace Wamp {
 	 * can be defined per WAMP controller.
 	 */
 	export const onReconnect = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 			metadata.reconnect = descriptor.value;
 			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
@@ -379,7 +379,7 @@ export namespace Wamp {
 	 * can be defined per WAMP controller.
 	 */
 	export const onReconnectSuccess = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
 			metadata.reconnectSuccess = descriptor.value;
 			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);

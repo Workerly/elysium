@@ -154,12 +154,15 @@ const makeCacheInterface = (store: KeyvStoreAdapter): CacheInterface => {
 	};
 };
 
-export namespace Cache {
+export abstract class Cache {
+	static #redis: CacheInterface | undefined;
+	static #memory: CacheInterface | undefined;
+
 	/**
 	 * A weak cache storage for simple non-intrusive caching of data.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
-	export const weak = Object.seal({
+	public static readonly weak = Object.seal({
 		/**
 		 * INTERNAL USAGE ONLY.
 		 * @private
@@ -189,15 +192,27 @@ export namespace Cache {
 	 * Redis-based cache storage.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
-	export const redis = makeCacheInterface(
-		new KeyvRedis({
-			connection: 'cache'
-		})
-	);
+	public static get redis(): CacheInterface {
+		if (!Cache.#redis) {
+			Cache.#redis = makeCacheInterface(
+				new KeyvRedis({
+					connection: 'cache'
+				})
+			);
+		}
+
+		return Cache.#redis;
+	}
 
 	/**
 	 * Memory-based cache storage.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
-	export const memory = makeCacheInterface(new KeyvCacheableMemory({ ttl: 60000, lruSize: 5000 }));
+	public static get memory(): CacheInterface {
+		if (!Cache.#memory) {
+			Cache.#memory = makeCacheInterface(new KeyvCacheableMemory({ ttl: 60000, lruSize: 5000 }));
+		}
+
+		return Cache.#memory;
+	}
 }
