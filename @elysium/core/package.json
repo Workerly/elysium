@@ -3,6 +3,7 @@
 	"version": "0.1.0",
 	"license": "Apache-2.0",
 	"description": "A super-charged web framework for Bun, built on top of ElysiaJS.",
+	"private": false,
 	"author": {
 		"name": "Axel Nana",
 		"email": "axel.nana@workbud.com"
