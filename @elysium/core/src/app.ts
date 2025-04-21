@@ -140,7 +140,8 @@ export abstract class Application extends InteractsWithConsole {
 	 */
 	public static register(props: AppProps = {}): ClassDecorator {
 		return function (target) {
-			props = assign({ modules: [], database: undefined, swagger: false }, props);
+			props = assign<AppProps>({ modules: [], database: undefined, swagger: false }, props);
+			props = assign<AppProps>(Reflect.getMetadata(Symbols.app, target) ?? {}, props);
 			Reflect.defineMetadata(Symbols.app, props, target);
 		};
 	}
