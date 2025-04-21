@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { afterAll, beforeEach, describe, expect, it, jest, Mock, mock, spyOn } from 'bun:test';
+import type { Mock } from 'bun:test';
+
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { createCache } from 'cache-manager';
 import * as KV from 'keyv';
 

@@ -126,7 +126,7 @@ export namespace Event {
 		if (isString(event)) {
 			EventBus.instance.on(event, handler!);
 		} else {
-			return function (target, propertyKey, descriptor) {
+			return function (_target, _propertyKey, descriptor) {
 				const listener = async function (eventData: EventData<any>) {
 					try {
 						await (descriptor.value as EventHandler<any>)(eventData);
@@ -170,7 +170,7 @@ export namespace Event {
 		if (isString(event)) {
 			EventBus.instance.once(event, handler!);
 		} else {
-			return function (target, propertyKey, descriptor) {
+			return function (_target, _propertyKey, descriptor) {
 				const listener = async function (eventData: EventData<any>) {
 					try {
 						await (descriptor.value as EventHandler<any>)(eventData);
@@ -217,7 +217,7 @@ export namespace Event {
 			return once(options);
 		}
 
-		return function (target, propertyKey, descriptor) {
+		return function (_target, _propertyKey, _descriptor) {
 			// TODO: Use logger service
 			console.error("Unknown mode provided to @listen. Use either 'on' or 'once'.");
 		};

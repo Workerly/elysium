@@ -14,8 +14,7 @@
 
 import { afterAll, afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from 'bun:test';
 
-import { Command, CommandArgumentType, CommandClass, CommandSpinner } from '../src/command';
-import { ConsoleFormat } from '../src/console';
+import { Command, CommandArgumentType, CommandSpinner } from '../src/command';
 import { Symbols } from '../src/utils';
 
 // Test Command.arg decorator

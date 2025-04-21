@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'reflect-metadata';
-
-import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 
 import { ConsoleFormat, InteractsWithConsole } from '../src/console';
 
@@ -339,7 +337,7 @@ describe('InteractsWithConsole', () => {
 	describe('User input methods', () => {
 		it('should prompt for user input', async () => {
 			// Mock readline interface
-			const mockQuestion = mock((question, callback) => {
+			const mockQuestion = mock((_question, callback) => {
 				callback('test input');
 			});
 
@@ -366,7 +364,7 @@ describe('InteractsWithConsole', () => {
 
 		it('should use default value when prompt input is empty', async () => {
 			// Mock readline interface
-			const mockQuestion = mock((question, callback) => {
+			const mockQuestion = mock((_question, callback) => {
 				callback('');
 			});
 

@@ -16,15 +16,13 @@ import type { EventData, EventHandler } from '../src/event';
 
 import { EventEmitter } from 'node:events';
 
-import { afterEach, beforeEach, describe, expect, it, jest, Mock, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, jest, mock, spyOn } from 'bun:test';
 
 const emitSpy = spyOn(EventEmitter.prototype, 'emit');
 const onSpy = spyOn(EventEmitter.prototype, 'on');
 const onceSpy = spyOn(EventEmitter.prototype, 'once');
-const offSpy = spyOn(EventEmitter.prototype, 'off');
 const prependListenerSpy = spyOn(EventEmitter.prototype, 'prependListener');
 const prependOnceListenerSpy = spyOn(EventEmitter.prototype, 'prependOnceListener');
-const removeListenerSpy = spyOn(EventEmitter.prototype, 'removeListener');
 const removeAllListenersSpy = spyOn(EventEmitter.prototype, 'removeAllListeners');
 
 const { Event } = await import('../src/event');
@@ -135,11 +133,11 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method
 			class TestClass {
 				@Event.on({ event: 'test-event' })
-				handleEvent(eventData: EventData<any>) {}
+				handleEvent(_eventData: EventData<any>) {}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Check if prependListener or on was called with the correct event name
 			expect(onSpy).toHaveBeenCalledWith('test-event', expect.any(Function));
@@ -149,11 +147,11 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method
 			class TestClass {
 				@Event.on({ event: 'test-event', prepend: true })
-				handleEvent(eventData: EventData<any>) {}
+				handleEvent(_eventData: EventData<any>) {}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Check if prependListener was called with the correct event name
 			expect(prependListenerSpy).toHaveBeenCalledWith('test-event', expect.any(Function));
@@ -163,13 +161,13 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method that throws an error
 			class TestClass {
 				@Event.on({ event: 'test-event' })
-				handleEvent(eventData: EventData<any>) {
+				handleEvent(_eventData: EventData<any>) {
 					throw new Error('Test error');
 				}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Get the listener function that was registered
 			const listener = onSpy.mock.calls[0][1];
@@ -190,11 +188,11 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method
 			class TestClass {
 				@Event.once({ event: 'test-event' })
-				handleEvent(eventData: EventData<any>) {}
+				handleEvent(_eventData: EventData<any>) {}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Check if once was called with the correct event name
 			expect(onceSpy).toHaveBeenCalledWith('test-event', expect.any(Function));
@@ -204,11 +202,11 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method
 			class TestClass {
 				@Event.once({ event: 'test-event', prepend: true })
-				handleEvent(eventData: EventData<any>) {}
+				handleEvent(_eventData: EventData<any>) {}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Check if prependOnceListener was called with the correct event name
 			expect(prependOnceListenerSpy).toHaveBeenCalledWith('test-event', expect.any(Function));
@@ -218,13 +216,13 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method that throws an error
 			class TestClass {
 				@Event.once({ event: 'test-event' })
-				handleEvent(eventData: EventData<any>) {
+				handleEvent(_eventData: EventData<any>) {
 					throw new Error('Test error');
 				}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Get the listener function that was registered
 			const listener = onSpy.mock.calls[0][1];
@@ -245,11 +243,11 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method
 			class TestClass {
 				@Event.listen({ event: 'test-event', mode: 'on' })
-				handleEvent(eventData: EventData<any>) {}
+				handleEvent(_eventData: EventData<any>) {}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Check if on was called with the correct parameters
 			expect(onSpy).toHaveBeenCalledWith('test-event', expect.any(Function));
@@ -259,11 +257,11 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method
 			class TestClass {
 				@Event.listen({ event: 'test-event', mode: 'once' })
-				handleEvent(eventData: EventData<any>) {}
+				handleEvent(_eventData: EventData<any>) {}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Check if once was called with the correct parameters
 			expect(onceSpy).toHaveBeenCalledWith('test-event', expect.any(Function));
@@ -277,11 +275,11 @@ describe('Event namespace', () => {
 			// Create a test class with a decorated method using an invalid mode
 			class TestClass {
 				@Event.listen({ event: 'test-event', mode: 'invalid' as any })
-				handleEvent(eventData: EventData<any>) {}
+				handleEvent(_eventData: EventData<any>) {}
 			}
 
 			// Create an instance of the test class
-			const instance = new TestClass();
+			new TestClass();
 
 			// Check if console.error was called with the correct message
 			expect(console.error).toHaveBeenCalledWith(

@@ -485,76 +485,69 @@ export namespace Http {
 	/**
 	 * Marks a method as an HTTP "server-sent events" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const sse = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const sse = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'elysium:SSE', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP "get" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const get = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const get = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'GET', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP "post" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const post = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const post = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'POST', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP "put" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const put = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const put = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'PUT', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP "delete" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const del = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const del = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'DELETE', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP "patch" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const patch = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const patch = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'PATCH', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP "head" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const head = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
+	export const head = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
 		const { path = '/', ...rest } = props ?? {};
 		return custom({ method: 'HEAD', path, ...rest });
 	};
@@ -562,31 +555,27 @@ export namespace Http {
 	/**
 	 * Marks a method as an HTTP "options" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const options = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const options = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'OPTIONS', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP "trace" request handler.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
-	export const trace = (props?: RequestHandlerDecoratorProps): MethodDecorator => {
-		const { path = '/', ...rest } = props ?? {};
+	export const trace = (props: RequestHandlerDecoratorProps = {}): MethodDecorator => {
+		const { path = '/', ...rest } = props;
 		return custom({ method: 'TRACE', path, ...rest });
 	};
 
 	/**
 	 * Marks a method as an HTTP request handler with a custom method.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param method The HTTP method.
-	 * @param path The path of the HTTP route.
-	 * @param schema The schema of the response body.
+	 * @param props The request handler properties.
 	 */
 	export const custom = ({
 		path = '/',

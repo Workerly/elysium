@@ -204,8 +204,8 @@ export const Repository = <
 		 * @returns The record with the given id.
 		 */
 		public async find(id: TId): Promise<TSelect | null> {
-			const r = await this.db.select().from(R.table).where(eq(R.table.id, id));
-			return (r[0] ?? null) as TSelect | null;
+			const [row] = await this.db.select().from(R.table).where(eq(R.table.id, id));
+			return (row ?? null) as TSelect | null;
 		}
 
 		/**
@@ -214,8 +214,8 @@ export const Repository = <
 		 * @returns The inserted record.
 		 */
 		public async insert(data: TInsert): Promise<TSelect> {
-			const r = await this.db.insert(R.table).values(data).returning();
-			return r[0] as TSelect;
+			const [row] = await this.db.insert(R.table).values(data).returning();
+			return row as TSelect;
 		}
 
 		/**
@@ -225,8 +225,8 @@ export const Repository = <
 		 * @returns The updated record.
 		 */
 		public async update(id: TId, data: TUpdate): Promise<TSelect> {
-			const r = await this.db.update(R.table).set(data).where(eq(R.table.id, id)).returning();
-			return r[0] as TSelect;
+			const [row] = await this.db.update(R.table).set(data).where(eq(R.table.id, id)).returning();
+			return row as TSelect;
 		}
 
 		/**
@@ -244,8 +244,8 @@ export const Repository = <
 		 * @returns The deleted record.
 		 */
 		public async delete(id: TId): Promise<TSelect> {
-			const r = await this.db.delete(R.table).where(eq(R.table.id, id)).returning();
-			return r[0] as TSelect;
+			const [row] = await this.db.delete(R.table).where(eq(R.table.id, id)).returning();
+			return row as TSelect;
 		}
 
 		/**

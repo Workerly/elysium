@@ -12,63 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { afterAll, jest, mock } from 'bun:test';
-
 import 'reflect-metadata';
+
+import { mock } from 'bun:test';
 
 import { Database } from '../src/database';
 import { Event } from '../src/event';
-import { applyMiddlewares, executeMiddlewareChain, Middleware } from '../src/middleware';
+import { Tenancy } from '../src/model';
 import { Redis } from '../src/redis';
 import { Service } from '../src/service';
 
 // Mock dependencies
-mock.module('../src/database', () => ({
-	Database: {
-		registerConnection: mock(Database.registerConnection),
-		connectionExists: mock(Database.connectionExists),
-		setDefaultConnection: mock(Database.setDefaultConnection),
-		getDefaultConnection: mock(Database.getDefaultConnection),
-		getConnection: mock(Database.getConnection)
-	}
-}));
-
-mock.module('../src/redis', () => ({
-	Redis: {
-		registerConnection: mock(Redis.registerConnection),
-		connectionExists: mock(Redis.connectionExists),
-		setDefaultConnection: mock(Redis.setDefaultConnection),
-		getDefaultConnection: mock(Redis.getDefaultConnection),
-		getConnection: mock(Redis.getConnection)
-	}
-}));
-
-mock.module('../src/service', () => ({
-	Service: {
-		instance: mock(Service.instance),
-		make: mock(Service.make),
-		get: mock(Service.get),
-		bind: mock(Service.bind),
-		clear: mock(Service.clear),
-		exists: mock(Service.exists),
-		remove: mock(Service.remove)
-	}
-}));
-
-mock.module('../src/event', () => ({
-	Event: {
-		emit: mock(Event.emit),
-		on: mock(Event.on),
-		once: mock(Event.once),
-		off: mock(Event.off),
-		clear: mock(Event.clear),
-		listen: mock(Event.listen)
-	}
-}));
 
 mock.module('node:async_hooks', () => ({
 	AsyncLocalStorage: class {
-		public run = mock((map, callback) => callback());
+		public run = mock((_map, callback) => callback());
 		public disable = mock();
 	}
 }));

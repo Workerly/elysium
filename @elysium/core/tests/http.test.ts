@@ -13,14 +13,15 @@
 // limitations under the License.
 
 import type { Context } from '../src/http';
+import type { ElysiaPlugin } from '../src/utils';
 
-import { afterAll, afterEach, describe, expect, it, jest, mock, spyOn } from 'bun:test';
+import { afterAll, afterEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import * as Elysia from 'elysia';
 
 import { Http, HttpControllerScope } from '../src/http';
 import * as M from '../src/middleware';
 import { Service } from '../src/service';
-import { ElysiaPlugin, nextTick, Symbols } from '../src/utils';
+import { nextTick, Symbols } from '../src/utils';
 
 describe('Http namespace', () => {
 	afterAll(() => {
@@ -75,6 +76,8 @@ describe('Http namespace', () => {
 		});
 
 		it('should register the controller in the service container with SERVER scope', async () => {
+			const makeSpy = spyOn(Service, 'make');
+
 			// Create a test class
 			@Http.controller({
 				path: '/test',
@@ -91,11 +94,13 @@ describe('Http namespace', () => {
 			await plugin();
 
 			// Check if the controller was registered in the service container
-			expect(Service.make).toHaveBeenCalledWith(TestController);
+			expect(makeSpy).toHaveBeenCalledWith(TestController);
 			expect(decorateSpy).toHaveBeenCalledWith('controller', expect.any(TestController));
 		});
 
 		it('should register the controller in the service container with REQUEST scope', async () => {
+			const makeSpy = spyOn(Service, 'make');
+
 			// Create a test class
 			@Http.controller({
 				path: '/test',
@@ -120,14 +125,14 @@ describe('Http namespace', () => {
 			const app = await plugin();
 
 			// Check if the controller was registered in the service container
-			expect(Service.make).not.toHaveBeenCalledWith(TestController);
+			expect(makeSpy).not.toHaveBeenCalledWith(TestController);
 			expect(resolveSpy).toHaveBeenCalledWith({ as: 'scoped' }, expect.any(Function));
 
 			app.listen(3131);
 			await app.handle(new Request('http://localhost:3131/test'));
 			app.stop();
 
-			expect(Service.make).toHaveBeenLastCalledWith(TestController);
+			expect(makeSpy).toHaveBeenLastCalledWith(TestController);
 			expect(executeMiddlewareChainSpy).toHaveBeenCalledWith(
 				[],
 				expect.any(Object),

@@ -73,10 +73,10 @@ export abstract class Module {
 							`Invalid controller class ${controller.name} registered in module ${target.name}. Ensure that you either used the @http(), or @websocket() decorators on the controller.`
 						);
 						process.exit(1);
+					} else {
+						// TODO: Add middlewares here
+						plugin.use(await app());
 					}
-
-					// TODO: Add middlewares here
-					plugin.use(await app());
 				}
 
 				return plugin;

@@ -1,37 +1,50 @@
-import 'reflect-metadata';
+// Copyright (c) 2025-present Workbud Technologies Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-import {
-	afterAll,
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	jest,
-	Mock,
-	mock,
-	spyOn
-} from 'bun:test';
+import type { Mock } from 'bun:test';
+import type { Context, Route } from '../src/http';
+
+import { afterAll, beforeEach, describe, expect, it, jest, mock, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
 
 import { Application } from '../src/app';
-import { Context, Route } from '../src/http';
 import * as M from '../src/middleware';
 import { Service } from '../src/service';
 import { Symbols } from '../src/utils';
 
+const mockRun = mock((_map: Map<string, any>, callback: Function) => callback());
+mock.module('../src/app', () => ({
+	Application: {
+		...Application,
+		context: {
+			run: mockRun
+		}
+	}
+}));
+
 describe('Middleware', () => {
 	// Create test middleware classes
 	class TestMiddleware1 extends M.Middleware {
-		public onBeforeHandle = mock((ctx: Context) => {});
-		public onAfterHandle = mock((ctx: Context) => {});
-		public onAfterResponse = mock((ctx: Context) => {});
+		public onBeforeHandle = mock((_ctx: Context) => {});
+		public onAfterHandle = mock((_ctx: Context) => {});
+		public onAfterResponse = mock((_ctx: Context) => {});
 	}
 
 	class TestMiddleware2 extends M.Middleware {
-		public onBeforeHandle = mock((ctx: Context) => {});
-		public onAfterHandle = mock((ctx: Context) => {});
-		public onAfterResponse = mock((ctx: Context) => {});
+		public onBeforeHandle = mock((_ctx: Context) => {});
+		public onAfterHandle = mock((_ctx: Context) => {});
+		public onAfterResponse = mock((_ctx: Context) => {});
 	}
 
 	// Create a mock context
@@ -135,10 +148,6 @@ describe('Middleware', () => {
 			const middleware1 = new TestMiddleware1();
 			const middleware2 = new TestMiddleware2();
 
-			const appContextSpy = spyOn(Application.context, 'run').mockImplementation(
-				(map: Map<string, any>, callback: Function) => callback()
-			);
-
 			// Execute the middleware chain
 			const result = await M.executeMiddlewareChain(
 				[middleware1, middleware2],
@@ -147,7 +156,7 @@ describe('Middleware', () => {
 			);
 
 			// Check if Application.context.run was called with the correct parameters
-			expect(appContextSpy).toHaveBeenCalledWith(expect.any(Map), expect.any(Function));
+			expect(mockRun).toHaveBeenCalledWith(expect.any(Map), expect.any(Function));
 
 			// Check if each middleware's method was called with the context
 			expect(middleware1.onBeforeHandle).toHaveBeenCalledWith(mockContext);
@@ -163,7 +172,7 @@ describe('Middleware', () => {
 			const middleware2 = new TestMiddleware2();
 
 			// Make the first middleware return a value
-			middleware1.onBeforeHandle = mock((ctx: Context) => 'stop');
+			middleware1.onBeforeHandle = mock((_ctx: Context) => 'stop');
 
 			// Execute the middleware chain
 			const result = await M.executeMiddlewareChain(
@@ -185,7 +194,7 @@ describe('Middleware', () => {
 
 			// Make the first middleware throw an error
 			const error = new Error('Test error');
-			middleware1.onBeforeHandle = mock((ctx: Context) => {
+			middleware1.onBeforeHandle = mock((_ctx: Context) => {
 				throw error;
 			});
 
@@ -212,7 +221,7 @@ describe('Middleware', () => {
 			// Mock Service.make to return middleware instances
 			const middleware1 = new TestMiddleware1();
 			const middleware2 = new TestMiddleware2();
-			(Service.make as Mock<typeof Service.make>)
+			const makeSpy = spyOn(Service, 'make')
 				.mockReturnValueOnce(middleware1)
 				.mockReturnValueOnce(middleware2);
 
@@ -220,8 +229,8 @@ describe('Middleware', () => {
 			M.applyMiddlewares([TestMiddleware1, TestMiddleware2], plugin);
 
 			// Check if Service.make was called for each middleware
-			expect(Service.make).toHaveBeenCalledWith(TestMiddleware1);
-			expect(Service.make).toHaveBeenCalledWith(TestMiddleware2);
+			expect(makeSpy).toHaveBeenCalledWith(TestMiddleware1);
+			expect(makeSpy).toHaveBeenCalledWith(TestMiddleware2);
 
 			// Check if plugin hooks were registered
 			expect(plugin.onBeforeHandle).toHaveBeenCalled();
@@ -252,7 +261,7 @@ describe('Middleware', () => {
 			// Mock Service.make to return middleware instances
 			const middleware1 = new TestMiddleware1();
 			const middleware2 = new TestMiddleware2();
-			(Service.make as Mock<typeof Service.make>)
+			const makeSpy = spyOn(Service, 'make')
 				.mockReturnValueOnce(middleware1)
 				.mockReturnValueOnce(middleware2);
 
@@ -299,15 +308,15 @@ describe('Middleware', () => {
 		it('should allow overriding lifecycle hooks', () => {
 			// Create a middleware with custom implementations
 			class CustomMiddleware extends M.Middleware {
-				public onBeforeHandle(ctx: Context): string {
+				public onBeforeHandle(_ctx: Context): string {
 					return 'before';
 				}
 
-				public onAfterHandle(ctx: Context): string {
+				public onAfterHandle(_ctx: Context): string {
 					return 'after';
 				}
 
-				public onAfterResponse(ctx: Context): string {
+				public onAfterResponse(_ctx: Context): string {
 					return 'response';
 				}
 			}
