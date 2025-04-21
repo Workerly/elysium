@@ -1,11 +1,11 @@
-# @elysium/core
+# @elysiumjs/core
 
 Core functionality for the Elysium framework.
 
 ## Installation
 
 ```bash
-bun install @elysium/core
+bun install @elysiumjs/core
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ bun install @elysium/core
 Create a controller class:
 
 ```typescript
-import { Http } from '@elysium/core';
+import { Http } from '@elysiumjs/core';
 
 @Http.controller({ path: '/users' })
 export class UserController {
@@ -27,7 +27,7 @@ export class UserController {
 Create a module class:
 
 ```typescript
-import { Module } from '@elysium/core';
+import { Module } from '@elysiumjs/core';
 
 import { UserController } from './controllers/http/user.controller';
 
@@ -52,7 +52,7 @@ export class MainModule extends Module {
 Create an application class:
 
 ```typescript
-import { Application } from '@elysium/core';
+import { Application } from '@elysiumjs/core';
 
 import { MainModule } from './main.module';
 

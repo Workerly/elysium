@@ -17,9 +17,9 @@ import type { ModuleProps } from '../src/module.ts';
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import * as E from 'elysia';
 
-import * as M from '../src/middleware';
-import { Module } from '../src/module';
-import { Symbols } from '../src/utils';
+import * as M from '../src/middleware.ts';
+import { Module } from '../src/module.ts';
+import { Symbols } from '../src/utils.ts';
 
 // Mock Elysia
 const mockElysia = {

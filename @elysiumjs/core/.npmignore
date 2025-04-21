@@ -1,0 +1,9 @@
+tsconfig.json
+bunfig.toml
+coverage
+tests
+.DS_Store
+node_modules
+.git
+.gitignore
+bun.lockb
