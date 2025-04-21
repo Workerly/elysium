@@ -691,7 +691,7 @@ export class WorkerPool extends InteractsWithConsole {
 	 * @param queues The queues to listen from the worker.
 	 */
 	public async addWorker(queues: string[] = []): Promise<void> {
-		const worker = new BunWorker('./styx', {
+		const worker = new BunWorker('./index.ts', {
 			preload: this.#jobFiles,
 			argv: ['work', ...queues.map((queue) => `--queue=${queue}`)]
 		});
