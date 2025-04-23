@@ -223,43 +223,47 @@ export namespace Wamp {
 					onReconnectSuccess: metadata.reconnectSuccess?.bind(controller)
 				});
 
-				const registrations: WampRegistration[] = metadata.registrations ?? [];
-				const subscriptions: WampSubscription[] = metadata.subscriptions ?? [];
-
-				for (const registration of registrations) {
-					w.register(
-						registration.topic,
-						registration.handler.bind(controller),
-						registration.options
-					).then((r: { topic: string; requestId: string; registrationId: string }) => {
-						// TODO: Use the logger service here
-						console.log(`Registered ${registration.topic} with id ${r.registrationId}`);
-					});
-				}
-
-				for (const subscription of subscriptions) {
-					w.subscribe(
-						subscription.topic,
-						subscription.handler.bind(controller),
-						subscription.options
-					).then(
-						(s: {
-							topic: string;
-							requestId: string;
-							subscriptionId: string;
-							subscriptionKey: string;
-						}) => {
-							// TODO: Use the logger service here
-							console.log(`Subscribed ${subscription.topic} with id ${s.subscriptionId}`);
-						}
-					);
-				}
-
 				const app = new Elysia();
 
 				app.onStart(async (_) => {
-					await w.connect();
-					metadata.open?.call(controller);
+					try {
+						await w.connect();
+						metadata.open?.call(controller);
+
+						const registrations: WampRegistration[] = metadata.registrations ?? [];
+						const subscriptions: WampSubscription[] = metadata.subscriptions ?? [];
+
+						for (const registration of registrations) {
+							w.register(
+								registration.topic,
+								registration.handler.bind(controller),
+								registration.options
+							).then((r: { topic: string; requestId: string; registrationId: string }) => {
+								// TODO: Use the logger service here
+								console.log(`Registered ${registration.topic} with id ${r.registrationId}`);
+							});
+						}
+
+						for (const subscription of subscriptions) {
+							w.subscribe(
+								subscription.topic,
+								subscription.handler.bind(controller),
+								subscription.options
+							).then(
+								(s: {
+									topic: string;
+									requestId: string;
+									subscriptionId: string;
+									subscriptionKey: string;
+								}) => {
+									// TODO: Use the logger service here
+									console.log(`Subscribed ${subscription.topic} with id ${s.subscriptionId}`);
+								}
+							);
+						}
+					} catch (error) {
+						// noop
+					}
 				});
 
 				return app;

@@ -19,7 +19,7 @@ import { Elysia } from 'elysia';
 import { last } from 'radash';
 
 import { Event } from '../src/event';
-import { Symbols } from '../src/utils';
+import { nextTick, Symbols } from '../src/utils';
 import { Wamp } from '../src/wamp';
 
 // Mock Wampy
@@ -119,6 +119,7 @@ describe('Wamp', () => {
 			await plugin();
 
 			// Check if Wampy was called with the correct options
+			// @ts-expect-error Mocking headaches
 			const { default: Wampy } = await import('wampy');
 			expect(Wampy).toHaveBeenCalledWith(
 				'ws://localhost:8080/ws',
@@ -171,10 +172,14 @@ describe('Wamp', () => {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, TestWampController);
 
 			// Call the plugin function
-			await plugin();
+			const app: Elysia = await plugin();
+			app.listen(3131);
+			await nextTick();
 
 			// Check if the RPC was registered
 			expect(mockWampy.register).toHaveBeenCalledWith('test.rpc', expect.any(Function), undefined);
+
+			app.stop();
 		});
 
 		it('should register an RPC handler with options', async () => {
@@ -194,13 +199,17 @@ describe('Wamp', () => {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, TestWampController);
 
 			// Call the plugin function
-			await plugin();
+			const app: Elysia = await plugin();
+			app.listen(3131);
+			await nextTick();
 
 			// Check if the RPC was registered with options
 			expect(mockWampy.register).toHaveBeenCalledWith('test.rpc', expect.any(Function), {
 				match: 'prefix',
 				invoke: 'roundrobin'
 			});
+
+			app.stop();
 		});
 
 		it('should set metadata on the target class', () => {
@@ -243,7 +252,9 @@ describe('Wamp', () => {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, TestWampController);
 
 			// Call the plugin function
-			await plugin();
+			const app: Elysia = await plugin();
+			app.listen(3131);
+			await nextTick();
 
 			// Check if the subscription was registered
 			expect(mockWampy.subscribe).toHaveBeenCalledWith(
@@ -251,6 +262,8 @@ describe('Wamp', () => {
 				expect.any(Function),
 				undefined
 			);
+
+			app.stop();
 		});
 
 		it('should register a subscription handler with options', async () => {
@@ -270,12 +283,16 @@ describe('Wamp', () => {
 			const plugin = Reflect.getMetadata(Symbols.elysiaPlugin, TestWampController);
 
 			// Call the plugin function
-			await plugin();
+			const app: Elysia = await plugin();
+			app.listen(3131);
+			await nextTick();
 
 			// Check if the subscription was registered with options
 			expect(mockWampy.subscribe).toHaveBeenCalledWith('test.topic', expect.any(Function), {
 				match: 'prefix'
 			});
+
+			app.stop();
 		});
 
 		it('should set metadata on the target class', () => {
@@ -405,6 +422,7 @@ describe('Wamp', () => {
 
 		it('should emit an error event when a WAMP error occurs', async () => {
 			// Get the Wampy constructor arguments
+			// @ts-expect-error wampy doesn't have type definitions
 			const { default: Wampy } = await import('wampy');
 			(Wampy as Mock<any>).mockClear();
 
@@ -429,7 +447,7 @@ describe('Wamp', () => {
 			// Call the plugin function
 			await plugin();
 
-			const wampyArgs = last((Wampy as Mock<any>).mock.calls[0]);
+			const wampyArgs: any = last((Wampy as Mock<any>).mock.calls[0]);
 
 			// Trigger the onError callback
 			wampyArgs.onError();
