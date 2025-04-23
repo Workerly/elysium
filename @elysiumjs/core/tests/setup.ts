@@ -16,12 +16,6 @@ import 'reflect-metadata';
 
 import { mock } from 'bun:test';
 
-import { Database } from '../src/database';
-import { Event } from '../src/event';
-import { Tenancy } from '../src/model';
-import { Redis } from '../src/redis';
-import { Service } from '../src/service';
-
 // Mock dependencies
 
 mock.module('node:async_hooks', () => ({

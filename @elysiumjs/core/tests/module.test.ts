@@ -85,6 +85,7 @@ describe('Module', () => {
 
 	describe('Module initialization', () => {
 		it('should initialize a module with no controllers', async () => {
+			// @ts-expect-error Mocking headaches
 			const elysiaSpy = spyOn(E, 'Elysia').mockReturnValueOnce(mockElysia);
 
 			// Create a test module class
@@ -116,6 +117,7 @@ describe('Module', () => {
 		});
 
 		it('should initialize a module with controllers', async () => {
+			// @ts-expect-error Mocking headaches
 			const elysiaSpy = spyOn(E, 'Elysia').mockReturnValueOnce(mockElysia);
 
 			// Create mock controller classes with Elysia plugins
@@ -193,6 +195,7 @@ describe('Module', () => {
 		});
 
 		it('should apply middlewares to the module', async () => {
+			// @ts-expect-error Mocking headaches
 			const elysiaSpy = spyOn(E, 'Elysia').mockReturnValueOnce(mockElysia);
 
 			// Create mock middleware classes

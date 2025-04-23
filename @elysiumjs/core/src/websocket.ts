@@ -108,10 +108,11 @@ export namespace Websocket {
 
 	/**
 	 * Marks a method as the websocket "open" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a websocket controller method. Only one "open" event handler
 	 * can be defined per websocket controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onOpen = (): MethodDecorator => {
 		return function (target, propertyKey, descriptor) {
@@ -123,10 +124,11 @@ export namespace Websocket {
 
 	/**
 	 * Marks a method as the websocket "close" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a websocket controller method. Only one "close" event handler
 	 * can be defined per websocket controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onClose = (): MethodDecorator => {
 		return function (target, propertyKey, descriptor) {
@@ -138,14 +140,15 @@ export namespace Websocket {
 
 	/**
 	 * Marks a method as the websocket "message" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a websocket controller method. Only one "message" event handler
 	 * can be defined per websocket controller.
 	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
 	 * @param schema The schema of the message body.
 	 */
-	export const onMessage = (schema: TSchema): MethodDecorator => {
+	export const onMessage = (schema?: TSchema): MethodDecorator => {
 		return function (target, propertyKey, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 			metadata.message = descriptor.value;
@@ -156,10 +159,11 @@ export namespace Websocket {
 
 	/**
 	 * Marks a method as the websocket "drain" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a websocket controller method. Only one "drain" event handler
 	 * can be defined per websocket controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onDrain = (): MethodDecorator => {
 		return function (target, propertyKey, descriptor) {
@@ -171,10 +175,11 @@ export namespace Websocket {
 
 	/**
 	 * Marks a method as the websocket "error" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a websocket controller method. Only one "error" event handler
 	 * can be defined per websocket controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onError = (): MethodDecorator => {
 		return function (target, propertyKey, descriptor) {
