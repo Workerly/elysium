@@ -1,4 +1,4 @@
-import { Job } from '../src/core/job';
+import { Job } from '@elysiumjs/core';
 
 @Job.register()
 export class FailingJob extends Job {
