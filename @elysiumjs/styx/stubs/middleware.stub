@@ -1,0 +1,9 @@
+import type { Context } from '@elysiumjs/core';
+
+import { Middleware } from '@elysiumjs/core';
+
+export class {name} extends Middleware {
+	public onBeforeHandle(ctx: Context) {
+		return;
+	}
+}

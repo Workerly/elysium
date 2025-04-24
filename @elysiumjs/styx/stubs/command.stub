@@ -1,0 +1,14 @@
+import { Command } from '@elysiumjs/core';
+
+export class {name} extends Command {
+	public static readonly command = '{command}';
+	public static readonly description = '{description}';
+
+	constructor() {
+		super();
+	}
+
+	public async run() {
+		this.write('Hello, World!');
+	}
+}

@@ -1,0 +1,26 @@
+import type { WS, WSError } from '@elysiumjs/core';
+
+import { Websocket } from '@elysiumjs/core';
+
+@Websocket.controller({ path: '{path}' })
+export class {name} {
+	@Websocket.onOpen()
+	private onOpen() {
+		console.log('websocket opened');
+	}
+
+	@Websocket.onClose()
+	private onClose() {
+		console.log('websocket closed');
+	}
+
+	@Websocket.onMessage()
+	private onMessage(ws: WS, data: any) {
+		ws.send(data);
+	}
+
+	@Websocket.onError()
+	private onErrorWS(e: WSError) {
+		console.error(e.error.message);
+	}
+}

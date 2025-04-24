@@ -1,0 +1,12 @@
+import { Job } from '@elysiumjs/core';
+
+@Job.register({ queue: '{queue}', name: '{alias}' })
+export class {name} extends Job {
+	constructor() {
+		super();
+	}
+
+	protected async execute(): Promise<void> {
+		this.write('Hello, World!');
+	}
+}
