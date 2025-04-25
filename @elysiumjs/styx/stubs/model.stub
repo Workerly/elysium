@@ -1,0 +1,12 @@
+import { Model } from '@elysiumjs/core';
+import { uuid } from 'drizzle-orm/pg-core';
+
+export class {name} extends Model('{table}', {
+	id: uuid().primaryKey().defaultRandom(),
+}) {
+	public static readonly supportTenancy = {supportTenancy};
+}
+
+export type {canonicalName} = typeof {name}.$inferSelect;
+export type {canonicalName}Insert = typeof {name}.$inferInsert;
+export type {canonicalName}Update = typeof {name}.$inferUpdate;

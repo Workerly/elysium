@@ -1,5 +1,28 @@
 {
 	"name": "@elysiumjs/styx",
+	"version": "0.1.1",
+	"license": "Apache-2.0",
+	"description": "The CLI tool for the Elysium framework.",
+	"private": false,
+	"author": {
+		"name": "Axel Nana",
+		"email": "axel.nana@workbud.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Workerly/elysium"
+	},
+	"homepage": "https://github.com/Workerly/elysium",
+	"scripts": {
+		"format": "prettier --write \"./src/**/*.ts\""
+	},
+	"keywords": [
+		"elysium",
+		"framework",
+		"web",
+		"api",
+		"typescript"
+	],
 	"type": "module",
 	"bin": {
 		"styx": "./index.ts"
@@ -11,6 +34,7 @@
 		"@types/string-template": "^1.0.6"
 	},
 	"peerDependencies": {
+		"@elysiumjs/core": "latest",
 		"typescript": "^5.8.3"
 	},
 	"dependencies": {

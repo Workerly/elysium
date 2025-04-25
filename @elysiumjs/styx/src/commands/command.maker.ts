@@ -14,51 +14,47 @@
 
 import type { PromptObject } from 'prompts';
 
-import { parseArgs } from 'node:util';
-
+import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { isEmpty, snake } from 'radash';
+import { pascal, snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { Maker } from './maker';
 
 /**
- * Maker class for creating Elysium middlewares.
+ * Maker class for creating Elysium commands.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MiddlewareMaker extends Maker {
-	public static readonly instance = new MiddlewareMaker();
+export class CommandMaker extends Maker {
+	public static readonly command: string = 'make:command';
+	public static readonly description: string = 'Creates a new command.';
 
-	private constructor() {
-		super('middleware');
-	}
+	@Command.arg({
+		description: 'The command to create',
+		type: CommandArgumentType.STRING,
+		required: true
+	})
+	private command: string = '';
 
-	public async run(args: string[]): Promise<boolean> {
-		if (isEmpty(args)) {
+	@Command.arg({
+		description: 'The description of the command',
+		type: CommandArgumentType.STRING
+	})
+	private description?: string;
+
+	public async run(): Promise<void> {
+		if (!this.command || !this.name) {
 			return this.setup();
 		}
 
 		const config = await parseProjectConfig();
 
-		const { values, positionals } = parseArgs({
-			args,
-			allowPositionals: true,
-			options: {
-				module: {
-					type: 'string',
-					short: 'm'
-				}
-			}
-		});
-
-		if (isEmpty(positionals)) {
-			return this.setup();
-		}
-
 		const answers: Record<string, any> = {
-			module: values.module,
-			name: positionals[0]
+			module: this.module,
+			name: this.name,
+			command: this.command,
+			description: this.description
 		};
 
 		if (!answers.module && !config.mono) {
@@ -75,10 +71,10 @@ export class MiddlewareMaker extends Maker {
 			answers.module = module.module;
 		}
 
-		return this.write(answers);
+		return this.build(answers);
 	}
 
-	private async setup(): Promise<boolean> {
+	private async setup(): Promise<void> {
 		const config = await parseProjectConfig();
 
 		const items: PromptObject[] = [
@@ -97,12 +93,25 @@ export class MiddlewareMaker extends Maker {
 			},
 			{
 				type: 'text',
-				name: 'name',
-				message: 'Middleware Name:',
-				initial: 'AuthMiddleware',
+				name: 'command',
+				message: 'Command Name:',
+				initial: 'user:say',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Middleware name cannot be empty';
+						return 'Command name cannot be empty';
+					}
+
+					return true;
+				}
+			},
+			{
+				type: 'text',
+				name: 'description',
+				message: 'Command Description:',
+				initial: 'Say something',
+				validate(value: string) {
+					if (value.length < 1) {
+						return 'Command description cannot be empty';
 					}
 
 					return true;
@@ -112,21 +121,23 @@ export class MiddlewareMaker extends Maker {
 
 		const answers = await prompts(items);
 
-		return this.write(answers);
+		answers.name = pascal(answers.command.replaceAll(':', '_'));
+
+		return this.build(answers);
 	}
 
-	private async write(answers: Record<string, any>): Promise<boolean> {
+	private async build(answers: Record<string, any>): Promise<void> {
 		if (!answers.name) {
-			console.log('Operation cancelled.');
-			return false;
+			this.error('Operation cancelled.');
+			return;
 		}
 
-		if (!answers.name.endsWith('Middleware')) {
-			answers.name += 'Middleware';
+		if (!answers.name.endsWith('Command')) {
+			answers.name += 'Command';
 		}
 
 		// Get stub file
-		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/middleware.stub');
+		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/command.stub');
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -134,11 +145,10 @@ export class MiddlewareMaker extends Maker {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Middleware', ''));
-		const file = Bun.file(`${path}/middlewares/${name}.middleware.ts`);
+		const name = snake(answers.name.replace('Command', ''));
+		const file = Bun.file(`${path}/commands/${name}.command.ts`);
 		await file.write(stub);
 
-		console.log(`Middleware ${answers.name} created successfully.`);
-		return true;
+		this.success(`Command ${answers.name} created successfully.`);
 	}
 }

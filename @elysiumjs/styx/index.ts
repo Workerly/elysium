@@ -12,34 +12,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { Maker } from './src/commands';
-
-const command = Bun.argv[2];
-
-if (command) {
-	const action = command.split(':')[0];
-	const args = Bun.argv.slice(3);
-
-	switch (action) {
-		case 'make': {
-			const maker = Maker.get(command);
-			if (!maker) {
-				console.log('Unknown maker:', command);
-				// TODO: Display list of available makers
-				process.exit(1);
-			}
-
-			await maker.run(args);
-			break;
-		}
-		default:
-			console.log('Unknown command:', command);
-			break;
-	}
-}
+import {
+	CommandMaker,
+	ControllerMaker,
+	JobMaker,
+	MiddlewareMaker,
+	ModelMaker,
+	ServiceMaker
+} from './src/commands';
 
 const { App } = await import(`${process.cwd()}/src/app`);
 
+@App.register({
+	commands: [CommandMaker, ControllerMaker, JobMaker, MiddlewareMaker, ModelMaker, ServiceMaker]
+})
 class StyxApp extends App {}
 
 new StyxApp();

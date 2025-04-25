@@ -14,61 +14,49 @@
 
 import type { PromptObject } from 'prompts';
 
-import { parseArgs } from 'node:util';
-
+import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { isEmpty, snake } from 'radash';
+import { pascal, snake, trim } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { Maker } from './maker';
 
 /**
- * Maker class for creating Elysium services.
+ * Maker command for creating Elysium models.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class ServiceMaker extends Maker {
-	public static readonly instance = new ServiceMaker();
+export class ModelMaker extends Maker {
+	public static readonly command: string = 'make:model';
+	public static readonly description: string = 'Creates a new model.';
 
-	private constructor() {
-		super('service');
-	}
+	@Command.arg({
+		name: 'table',
+		description: 'The name of the table wrapped by the model',
+		type: CommandArgumentType.STRING
+	})
+	private tableName?: string;
 
-	public async run(args: string[]): Promise<boolean> {
-		if (isEmpty(args)) {
+	@Command.arg({
+		name: 'support-tenancy',
+		description: 'Support tenancy',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private supportTenancy: boolean = false;
+
+	public async run(): Promise<void> {
+		if (!this.name || !this.tableName) {
 			return this.setup();
 		}
 
 		const config = await parseProjectConfig();
 
-		const { values, positionals } = parseArgs({
-			args,
-			allowPositionals: true,
-			options: {
-				module: {
-					type: 'string',
-					short: 'm'
-				},
-				singleton: {
-					type: 'boolean',
-					short: 's'
-				},
-				factory: {
-					type: 'boolean',
-					short: 'f'
-				}
-			}
-		});
-
-		if (isEmpty(positionals)) {
-			return this.setup();
-		}
-
 		const answers: Record<string, any> = {
-			module: values.module,
-			name: positionals[0],
-			alias: positionals[1],
-			scope: values.singleton ? 'SINGLETON' : 'FACTORY'
+			module: this.module,
+			table: this.tableName,
+			name: this.name,
+			supportTenancy: this.supportTenancy
 		};
 
 		if (!answers.module && !config.mono) {
@@ -85,16 +73,16 @@ export class ServiceMaker extends Maker {
 			answers.module = module.module;
 		}
 
-		if (values.factory) {
-			answers.scope = 'FACTORY';
-		} else if (values.singleton) {
-			answers.scope = 'SINGLETON';
+		if (!answers.name) {
+			answers.name = trim(pascal(answers.table), 's');
 		}
 
-		return this.write(answers);
+		answers.canonicalName = answers.name;
+
+		return this.build(answers);
 	}
 
-	private async setup(): Promise<boolean> {
+	private async setup(): Promise<void> {
 		const config = await parseProjectConfig();
 
 		const items: PromptObject[] = [
@@ -113,12 +101,12 @@ export class ServiceMaker extends Maker {
 			},
 			{
 				type: 'text',
-				name: 'name',
-				message: 'Service Name:',
-				initial: 'UserService',
+				name: 'table',
+				message: 'Table Name:',
+				initial: 'users',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Service name cannot be empty';
+						return 'Table name cannot be empty';
 					}
 
 					return true;
@@ -126,14 +114,14 @@ export class ServiceMaker extends Maker {
 			},
 			{
 				type: 'text',
-				name: 'alias',
-				message: 'Service Alias:',
+				name: 'name',
+				message: 'Model Name:',
 				initial(_, values) {
-					return values.name;
+					return trim(pascal(values.table), 's');
 				},
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Service alias cannot be empty';
+						return 'Model name cannot be empty';
 					}
 
 					return true;
@@ -141,18 +129,18 @@ export class ServiceMaker extends Maker {
 			},
 			{
 				type: 'select',
-				name: 'scope',
-				message: 'Service Scope:',
+				name: 'supportTenancy',
+				message: 'Support Tenancy:',
 				choices: [
 					{
-						title: 'SINGLETON',
-						value: 'SINGLETON',
-						description: 'A single instance of the service is created.'
+						title: 'Yes',
+						value: true,
+						description: 'The model supports multi-tenancy.'
 					},
 					{
-						title: 'FACTORY',
-						value: 'FACTORY',
-						description: 'A new instance of the service is created each time it is injected.'
+						title: 'No',
+						value: false,
+						description: 'The model does not support multi-tenancy.'
 					}
 				]
 			}
@@ -160,25 +148,23 @@ export class ServiceMaker extends Maker {
 
 		const answers = await prompts(items);
 
-		return this.write(answers);
+		return this.build(answers);
 	}
 
-	private async write(answers: Record<string, any>): Promise<boolean> {
+	private async build(answers: Record<string, any>): Promise<void> {
 		if (!answers.name) {
-			console.log('Operation cancelled.');
-			return false;
+			this.error('Operation cancelled.');
+			return;
 		}
 
-		if (!answers.name.endsWith('Service')) {
-			answers.name += 'Service';
+		if (!answers.name.endsWith('Model')) {
+			answers.name += 'Model';
 		}
 
-		if (!answers.alias) {
-			answers.alias = answers.name;
-		}
+		answers.canonicalName = answers.name.replace('Model', '');
 
 		// Get stub file
-		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/service.stub');
+		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/model.stub');
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -186,11 +172,11 @@ export class ServiceMaker extends Maker {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Service', ''));
-		const file = Bun.file(`${path}/services/${name}.service.ts`);
+		const name = snake(answers.name.replace('Model', ''));
+		const file = Bun.file(`${path}/models/${name}.model.ts`);
 		await file.write(stub);
 
-		console.log(`Service ${answers.name} created successfully.`);
-		return true;
+		this.success(`Model ${answers.name} created successfully.`);
+		return;
 	}
 }

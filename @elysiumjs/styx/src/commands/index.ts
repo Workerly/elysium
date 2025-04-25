@@ -13,8 +13,9 @@
 // limitations under the License.
 
 export * from './maker';
-export * from './command_maker';
-export * from './controller_maker';
-export * from './job_maker';
-export * from './middleware_maker';
-export * from './service_maker';
+export * from './command.maker';
+export * from './controller.maker';
+export * from './job.maker';
+export * from './middleware.maker';
+export * from './model.maker';
+export * from './service.maker';

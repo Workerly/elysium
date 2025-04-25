@@ -12,47 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Command, CommandArgumentType } from '@elysiumjs/core';
+
 /**
  * Maker is a base class for all makers.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export abstract class Maker {
-	private static readonly makers: Map<string, Maker> = new Map();
+export abstract class Maker extends Command {
+	public static readonly command: string = 'make';
+	public static readonly description: string = 'Creates a new Elysium item';
 
-	protected constructor(protected readonly name: string) {
-		Maker.register(`make:${this.name}`, this);
-	}
+	@Command.arg({
+		description: 'The name of the item to create',
+		type: CommandArgumentType.STRING
+	})
+	protected name?: string;
 
-	/**
-	 * Registers a maker.
-	 * @param name The name of the maker.
-	 * @param maker The maker instance.
-	 */
-	public static register(name: string, maker: Maker) {
-		this.makers.set(name, maker);
-	}
-
-	/**
-	 * Gets a maker by name.
-	 * @param name The name of the maker.
-	 * @returns The maker instance.
-	 */
-	public static get(name: string) {
-		return this.makers.get(name);
-	}
-
-	/**
-	 * Gets a list of all makers.
-	 * @returns A list of maker names.
-	 */
-	public static list() {
-		return Array.from(this.makers.keys());
-	}
-
-	/**
-	 * Runs the maker.
-	 * @param args The arguments passed to the maker.
-	 * @returns A promise that resolves when the maker is complete.
-	 */
-	public abstract run(args: string[]): Promise<boolean>;
+	@Command.arg({
+		description: 'The module where the item will be created',
+		type: CommandArgumentType.STRING
+	})
+	protected module?: string;
 }

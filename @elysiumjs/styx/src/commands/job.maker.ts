@@ -14,10 +14,9 @@
 
 import type { PromptObject } from 'prompts';
 
-import { parseArgs } from 'node:util';
-
+import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { isEmpty, snake } from 'radash';
+import { snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
@@ -28,43 +27,34 @@ import { Maker } from './maker';
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class JobMaker extends Maker {
-	public static readonly instance = new JobMaker();
+	public static readonly command: string = 'make:job';
+	public static readonly description: string = 'Creates a new job.';
 
-	private constructor() {
-		super('job');
-	}
+	@Command.arg({
+		description: 'The alias of the job to create',
+		type: CommandArgumentType.STRING
+	})
+	private alias?: string;
 
-	public async run(args: string[]): Promise<boolean> {
-		if (isEmpty(args)) {
+	@Command.arg({
+		description: 'The name of the queue where the job will be dispatched',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private queue: boolean = false;
+
+	public async run(): Promise<void> {
+		if (!this.name) {
 			return this.setup();
 		}
 
 		const config = await parseProjectConfig();
 
-		const { values, positionals } = parseArgs({
-			args,
-			allowPositionals: true,
-			options: {
-				module: {
-					type: 'string',
-					short: 'm'
-				},
-				queue: {
-					type: 'boolean',
-					short: 'q'
-				}
-			}
-		});
-
-		if (isEmpty(positionals)) {
-			return this.setup();
-		}
-
 		const answers: Record<string, any> = {
-			module: values.module,
-			name: positionals[0],
-			alias: positionals[1],
-			queue: values.queue ?? 'default'
+			module: this.module,
+			name: this.name,
+			alias: this.alias,
+			queue: this.queue ?? 'default'
 		};
 
 		if (!answers.module && !config.mono) {
@@ -81,10 +71,10 @@ export class JobMaker extends Maker {
 			answers.module = module.module;
 		}
 
-		return this.write(answers);
+		return this.build(answers);
 	}
 
-	private async setup(): Promise<boolean> {
+	private async setup(): Promise<void> {
 		const config = await parseProjectConfig();
 
 		const items: PromptObject[] = [
@@ -139,13 +129,13 @@ export class JobMaker extends Maker {
 
 		const answers = await prompts(items);
 
-		return this.write(answers);
+		return this.build(answers);
 	}
 
-	private async write(answers: Record<string, any>): Promise<boolean> {
+	private async build(answers: Record<string, any>): Promise<void> {
 		if (!answers.name) {
-			console.log('Operation cancelled.');
-			return false;
+			this.error('Operation cancelled.');
+			return;
 		}
 
 		if (!answers.name.endsWith('Job')) {
@@ -169,7 +159,6 @@ export class JobMaker extends Maker {
 		const file = Bun.file(`${path}/jobs/${name}.job.ts`);
 		await file.write(stub);
 
-		console.log(`Job ${answers.name} created successfully.`);
-		return true;
+		this.success(`Job ${answers.name} created successfully.`);
 	}
 }

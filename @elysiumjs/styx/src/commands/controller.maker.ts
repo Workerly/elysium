@@ -14,10 +14,9 @@
 
 import type { PromptObject } from 'prompts';
 
-import { parseArgs } from 'node:util';
-
+import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { isEmpty, snake } from 'radash';
+import { snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
@@ -28,55 +27,70 @@ import { Maker } from './maker';
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class ControllerMaker extends Maker {
-	public static readonly instance = new ControllerMaker();
+	public static readonly command: string = 'make:controller';
+	public static readonly description: string = 'Creates a new controller.';
 
-	private constructor() {
-		super('controller');
-	}
+	@Command.arg({
+		description: 'Whether to create a HTTP controller',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private http: boolean = false;
 
-	public async run(args: string[]): Promise<boolean> {
-		if (isEmpty(args)) {
+	@Command.arg({
+		description: 'Whether to create a WAMP controller',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private wamp: boolean = false;
+
+	@Command.arg({
+		description: 'Whether to create a WebSocket controller',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private ws: boolean = false;
+
+	@Command.arg({
+		description: 'Whether to create a SERVER scope controller',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private server: boolean = false;
+
+	@Command.arg({
+		description: 'Whether to create a REQUEST scope controller',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private request: boolean = false;
+
+	@Command.arg({
+		description: 'The path or URL of the controller',
+		type: CommandArgumentType.STRING
+	})
+	private path: string = '/users';
+
+	@Command.arg({
+		description: 'The realm of the controller (only applicable to WAMP controllers)',
+		type: CommandArgumentType.STRING
+	})
+	private realm?: string;
+
+	public async run(): Promise<void> {
+		if (!this.name) {
 			return this.setup();
 		}
 
 		const config = await parseProjectConfig();
 
-		const { values, positionals } = parseArgs({
-			args,
-			allowPositionals: true,
-			options: {
-				module: {
-					type: 'string',
-					short: 'm'
-				},
-				http: {
-					type: 'boolean'
-				},
-				wamp: {
-					type: 'boolean'
-				},
-				ws: {
-					type: 'boolean'
-				},
-				server: {
-					type: 'boolean',
-					short: 's'
-				},
-				request: {
-					type: 'boolean',
-					short: 'r'
-				}
-			}
-		});
-
-		if (positionals.length < 2) {
-			return this.setup();
-		}
-
 		const answers: Record<string, any> = {
-			module: values.module,
+			module: this.module,
 			type: 'http',
-			scope: 'SERVER'
+			scope: 'SERVER',
+			name: this.name,
+			path: this.path,
+			realm: this.realm ?? 'realm1'
 		};
 
 		if (!answers.module && !config.mono) {
@@ -93,28 +107,24 @@ export class ControllerMaker extends Maker {
 			answers.module = module.module;
 		}
 
-		if (values.http) {
+		if (this.http) {
 			answers.type = 'http';
-		} else if (values.wamp) {
+		} else if (this.wamp) {
 			answers.type = 'wamp';
-		} else if (values.ws) {
+		} else if (this.ws) {
 			answers.type = 'ws';
 		}
 
-		if (values.server) {
+		if (this.server) {
 			answers.scope = 'SERVER';
-		} else if (values.request) {
+		} else if (this.request) {
 			answers.scope = 'REQUEST';
 		}
 
-		answers.name = positionals[0];
-		answers.path = positionals[1];
-		answers.realm = positionals[2] ?? 'realm1';
-
-		return this.write(answers);
+		return this.build(answers);
 	}
 
-	private async setup(): Promise<boolean> {
+	private async setup(): Promise<void> {
 		let mode: 'http' | 'wamp' | 'ws' = 'http';
 
 		const config = await parseProjectConfig();
@@ -217,13 +227,13 @@ export class ControllerMaker extends Maker {
 
 		const answers = await prompts(items);
 
-		return this.write(answers);
+		return this.build(answers);
 	}
 
-	private async write(answers: Record<string, any>): Promise<boolean> {
+	private async build(answers: Record<string, any>): Promise<void> {
 		if (!answers.type || !answers.name || !answers.path) {
-			console.log('Operation cancelled.');
-			return false;
+			this.error('Operation cancelled.');
+			return;
 		}
 
 		if (!answers.name.endsWith('Controller')) {
@@ -245,7 +255,6 @@ export class ControllerMaker extends Maker {
 		const file = Bun.file(`${path}/controllers/${answers.type}/${name}.controller.ts`);
 		await file.write(stub);
 
-		console.log(`Controller ${answers.name} created successfully.`);
-		return true;
+		this.success(`Controller ${answers.name} created successfully.`);
 	}
 }
