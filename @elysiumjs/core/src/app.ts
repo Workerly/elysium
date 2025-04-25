@@ -25,7 +25,6 @@ import { parseArgs } from 'node:util';
 
 import { swagger as swaggerPlugin } from '@elysiajs/swagger';
 import { Elysia } from 'elysia';
-import { assign } from 'radash';
 
 import { ConsoleFormat, InteractsWithConsole } from './console';
 import { Database } from './database';
@@ -33,7 +32,7 @@ import { Event } from './event';
 import { applyMiddlewares } from './middleware';
 import { Redis } from './redis';
 import { Service } from './service';
-import { Symbols } from './utils';
+import { deepMerge, Symbols } from './utils';
 
 /**
  * Properties required when declaring an app using the `@app()` decorator.
@@ -140,8 +139,32 @@ export abstract class Application extends InteractsWithConsole {
 	 */
 	public static register(props: AppProps = {}): ClassDecorator {
 		return function (target) {
-			props = assign<AppProps>({ modules: [], database: undefined, swagger: false }, props);
-			props = assign<AppProps>(Reflect.getMetadata(Symbols.app, target) ?? {}, props);
+			// Default props
+			props = deepMerge<AppProps>({ modules: [], database: undefined, swagger: false }, props);
+
+			// Get metadata from the prototype chain
+			let parentMetadata: AppProps | undefined;
+			let proto = Object.getPrototypeOf(target);
+
+			// Traverse up the prototype chain to find metadata
+			while (proto && proto !== Object.prototype) {
+				const metadata = Reflect.getMetadata(Symbols.app, proto);
+				if (metadata) {
+					parentMetadata = metadata;
+					break;
+				}
+				proto = Object.getPrototypeOf(proto);
+			}
+
+			// Merge with parent metadata if found, then with current metadata
+			if (parentMetadata) {
+				props = deepMerge<AppProps>(parentMetadata, props);
+			}
+
+			// Merge with existing metadata on the current class (if any)
+			props = deepMerge<AppProps>(Reflect.getMetadata(Symbols.app, target) ?? {}, props);
+
+			// Store the merged metadata
 			Reflect.defineMetadata(Symbols.app, props, target);
 		};
 	}
