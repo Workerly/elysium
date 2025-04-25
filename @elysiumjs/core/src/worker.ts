@@ -665,8 +665,6 @@ export class Worker extends InteractsWithConsole {
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class WorkerPool extends InteractsWithConsole {
-	#jobFiles: string[] = [];
-
 	private workers: BunWorker[] = [];
 	private currentWorkerIndex = 0;
 	private queueWorkerMap: Map<string, BunWorker[]> = new Map();
@@ -681,9 +679,7 @@ export class WorkerPool extends InteractsWithConsole {
 	 * Initialize the worker pool.
 	 */
 	public async init() {
-		// Preload all job files to make them available in worker thread.
-		this.#jobFiles = await Array.fromAsync(new Bun.Glob('./src/**/*.job.ts').scan());
-		this.debug(`WorkerPool initialized: found ${this.#jobFiles.length} job files`);
+		// noop for now
 	}
 
 	/**
@@ -691,10 +687,21 @@ export class WorkerPool extends InteractsWithConsole {
 	 * @param queues The queues to listen from the worker.
 	 */
 	public async addWorker(queues: string[] = []): Promise<void> {
-		const worker = new BunWorker('./index.ts', {
-			preload: this.#jobFiles,
-			argv: ['work', ...queues.map((queue) => `--queue=${queue}`)]
-		});
+		let worker: BunWorker;
+
+		if (ELYSIUM_BUILD) {
+			worker = new BunWorker('./index.js', {
+				argv: ['work', ...queues.map((queue) => `--queue=${queue}`)]
+			});
+		} else {
+			// Preload all job files to make them available in worker thread.
+			const jobFiles = await Array.fromAsync(new Bun.Glob('./src/**/*.job.ts').scan());
+
+			worker = new BunWorker('./index.ts', {
+				preload: jobFiles,
+				argv: ['work', ...queues.map((queue) => `--queue=${queue}`)]
+			});
+		}
 
 		worker.addEventListener('error', (e) => {
 			this.trace({
