@@ -1,7 +1,7 @@
 import { Wamp } from '@elysiumjs/core';
 
 @Wamp.controller({ url: '{path}', realm: '{realm}' })
-class {name} {
+export class {name} {
     @Wamp.register('topic')
     public async topicRPC() {
         return 'Hello World';

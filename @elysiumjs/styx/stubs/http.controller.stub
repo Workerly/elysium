@@ -1,7 +1,7 @@
 import { Http, HttpControllerScope } from '@elysiumjs/core';
 
 @Http.controller({ path: '{path}', scope: HttpControllerScope.{scope} })
-class {name} {
+export class {name} {
     @Http.get()
     public async get() {
         return 'Hello World';
