@@ -1,7 +1,8 @@
 import type { WampRegistrationHandlerArgs } from '@elysiumjs/core';
 
 import { Service, Wamp } from '@elysiumjs/core';
-import { LoggerService } from '../../services/logger.service';
+
+import { LoggerService } from '#root/services/logger.service';
 
 @Wamp.controller({ url: 'ws://127.0.0.1:8888', realm: 'realm1' })
 export class TestController {

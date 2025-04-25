@@ -2,8 +2,8 @@ import type { EventData } from '@elysiumjs/core';
 
 import { Event, Service, ServiceScope } from '@elysiumjs/core';
 
-import { UserRepository } from '../repositories/user.repository';
-import { LoggerService } from './logger.service';
+import { UserRepository } from '#root/repositories/user.repository';
+import { LoggerService } from '#root/services/logger.service';
 
 @Service.register({ name: 'user.service', scope: ServiceScope.SINGLETON })
 export class UserService {

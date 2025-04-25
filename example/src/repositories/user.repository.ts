@@ -1,5 +1,6 @@
-import { Repository, Service } from '@elysiumjs/core';
-import { UserModel } from '../models/user.model';
+import { Repository, Service, ServiceScope } from '@elysiumjs/core';
 
-@Service.register()
+import { UserModel } from '#root/models/user.model';
+
+@Service.register({ name: 'UserRepository', scope: ServiceScope.SINGLETON })
 export class UserRepository extends Repository(UserModel) {}

@@ -3,6 +3,9 @@
 	"module": "index.ts",
 	"type": "module",
 	"private": true,
+	"imports": {
+		"#root/*": "./src/*.ts"
+	},
 	"devDependencies": {
 		"@types/bun": "latest",
 		"@ianvs/prettier-plugin-sort-imports": "^4.4.1"

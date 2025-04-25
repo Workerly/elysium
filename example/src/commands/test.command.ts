@@ -1,4 +1,4 @@
-import type { UserService } from '../services/user.service';
+import type { UserService } from '#root/services/user.service';
 
 import { Command, Service } from '@elysiumjs/core';
 

@@ -3,11 +3,11 @@ import type { Elysia } from 'elysia';
 
 import { Application, Middleware, WorkerPool } from '@elysiumjs/core';
 
-import { ProgressDemoCommand } from './commands/progress-demo.command';
-import { SpinnerDemoCommand } from './commands/spinner-demo.command';
-import { TestCommand } from './commands/test.command';
-import { MainModule } from './main.module';
-import { XServerMiddleware } from './middlewares/x-server.middleware';
+import { ProgressDemoCommand } from '#root/commands/progress-demo.command';
+import { SpinnerDemoCommand } from '#root/commands/spinner-demo.command';
+import { TestCommand } from '#root/commands/test.command';
+import { MainModule } from '#root/main.module';
+import { XServerMiddleware } from '#root/middlewares/x-server.middleware';
 
 @Middleware.register(XServerMiddleware)
 @Application.register({

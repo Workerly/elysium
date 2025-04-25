@@ -1,17 +1,17 @@
 import type { Context, EventData } from '@elysiumjs/core';
+import type { User, UserInsert } from '#root/models/user.model';
 import type { Class } from 'type-fest';
 import type { MainModule } from '../../main.module';
-import type { User, UserInsert } from '../../models/user.model';
 
 import { Cache, Event, Http, HttpControllerScope, Service, WorkerPool } from '@elysiumjs/core';
 import { t } from 'elysia';
 import { isEmpty, uid } from 'radash';
 
-import { EmailJob } from '../../jobs/email.job';
-import { UserModel } from '../../models/user.model';
-import { LoggerService } from '../../services/logger.service';
-import { UserService } from '../../services/user.service';
-import { co, mo } from '../../utils/decorators';
+import { EmailJob } from '#root/jobs/email.job';
+import { UserModel } from '#root/models/user.model';
+import { LoggerService } from '#root/services/logger.service';
+import { UserService } from '#root/services/user.service';
+import { co, mo } from '#root/utils/decorators';
 
 @Http.controller({ path: '/users', scope: HttpControllerScope.SERVER, tags: ['users'] })
 export class UserController {
@@ -38,7 +38,7 @@ export class UserController {
 			await Cache.memory.set(`${c.tenant}:users:list`, list);
 		}
 
-		return list;
+		return list!;
 	}
 
 	@Http.del({ response: t.Array(UserModel.selectSchema) })

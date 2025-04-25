@@ -1,10 +1,10 @@
 import type { WS, WSError } from '@elysiumjs/core';
-import type { UserInsert } from '../../models/user.model';
+import type { UserInsert } from '#root/models/user.model';
 
 import { Service, Websocket } from '@elysiumjs/core';
 
-import { UserModel } from '../../models/user.model';
-import { LoggerService } from '../../services/logger.service';
+import { UserModel } from '#root/models/user.model';
+import { LoggerService } from '#root/services/logger.service';
 
 @Websocket.controller({ path: '/chat', options: { idleTimeout: 10 } })
 export class ChatServerController {
@@ -20,7 +20,7 @@ export class ChatServerController {
 		this.logger.log('websocket closed');
 	}
 
-	@Websocket.onMessage()
+	@Websocket.onMessage(UserModel.createSchema)
 	private onMessage(ws: WS, data: UserInsert) {
 		this.logger.log(`received message: ${JSON.stringify(data)} from ${ws.data.id}`);
 		ws.send(JSON.stringify({ message: `Created user ${data.name}` }));

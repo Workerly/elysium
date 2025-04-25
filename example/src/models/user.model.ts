@@ -1,6 +1,5 @@
-import { boolean, integer, uuid, varchar } from 'drizzle-orm/pg-core';
-
 import { Model } from '@elysiumjs/core';
+import { boolean, integer, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export class UserModel extends Model('users', {
 	id: uuid().primaryKey().defaultRandom(),
