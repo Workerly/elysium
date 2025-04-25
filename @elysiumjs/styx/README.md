@@ -2,25 +2,33 @@
 
 CLI tool for Elysium.
 
+## Installation
+
+```bash
+bun install @elysiumjs/styx
+```
+
 ## Usage
+
+The `styx` command needs to be run from the root of your Elysium project.
 
 To create new items:
 
 ```bash
-bun styx make:controller
-bun styx make:job
-bun styx make:middleware
-bun styx make:service
-bun styx make:command
+bun styx exec make:controller [options]
+bun styx exec make:job [options]
+bun styx exec make:middleware [options]
+bun styx exec make:service [options]
+bun styx exec make:command [options]
 ```
 
-To run the Elysium server:
+To start the Elysium project:
 
 ```bash
 bun styx serve
 ```
 
-To execute a command:
+To execute a custom command:
 
 ```bash
 bun styx exec <command>
