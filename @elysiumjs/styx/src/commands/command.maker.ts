@@ -20,22 +20,32 @@ import { pascal, snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
-import { Maker } from './maker';
 
 /**
  * Maker class for creating Elysium commands.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class CommandMaker extends Maker {
+export class CommandMaker extends Command {
 	public static readonly command: string = 'make:command';
 	public static readonly description: string = 'Creates a new command.';
 
 	@Command.arg({
-		description: 'The command to create',
-		type: CommandArgumentType.STRING,
-		required: true
+		description: 'The name of the command to create',
+		type: CommandArgumentType.STRING
 	})
-	private command: string = '';
+	protected name?: string;
+
+	@Command.arg({
+		description: 'The module where the command will be created',
+		type: CommandArgumentType.STRING
+	})
+	protected module?: string;
+
+	@Command.arg({
+		description: 'The command to create',
+		type: CommandArgumentType.STRING
+	})
+	private command?: string;
 
 	@Command.arg({
 		description: 'The description of the command',

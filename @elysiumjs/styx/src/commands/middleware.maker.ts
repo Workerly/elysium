@@ -14,20 +14,32 @@
 
 import type { PromptObject } from 'prompts';
 
+import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
 import { snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
-import { Maker } from './maker';
 
 /**
  * Maker class for creating Elysium middlewares.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MiddlewareMaker extends Maker {
+export class MiddlewareMaker extends Command {
 	public static readonly command: string = 'make:middleware';
 	public static readonly description: string = 'Creates a new middleware.';
+
+	@Command.arg({
+		description: 'The name of the middleware to create',
+		type: CommandArgumentType.STRING
+	})
+	protected name?: string;
+
+	@Command.arg({
+		description: 'The module where the middleware will be created',
+		type: CommandArgumentType.STRING
+	})
+	protected module?: string;
 
 	public async run(): Promise<void> {
 		if (!this.name) {

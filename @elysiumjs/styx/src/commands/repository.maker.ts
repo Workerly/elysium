@@ -22,37 +22,50 @@ import formatter from 'string-template';
 import { getModulePath, parseProjectConfig } from '../config';
 
 /**
- * Maker class for creating Elysium jobs.
+ * Maker command for creating Elysium repositories.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class JobMaker extends Command {
-	public static readonly command: string = 'make:job';
-	public static readonly description: string = 'Creates a new job.';
+export class RepositoryMaker extends Command {
+	public static readonly command: string = 'make:repository';
+	public static readonly description: string = 'Creates a new repository.';
 
 	@Command.arg({
-		description: 'The name of the job to create',
+		description: 'The name of the repository to create',
 		type: CommandArgumentType.STRING
 	})
 	protected name?: string;
 
 	@Command.arg({
-		description: 'The module where the job will be created',
+		description: 'The module where the repository will be created',
 		type: CommandArgumentType.STRING
 	})
 	protected module?: string;
 
 	@Command.arg({
-		description: 'The alias of the job to create',
+		description: 'The alias of the repository to create',
 		type: CommandArgumentType.STRING
 	})
 	private alias?: string;
 
 	@Command.arg({
-		description: 'The name of the queue where the job will be dispatched',
+		description: 'The model used by the repository',
+		type: CommandArgumentType.STRING
+	})
+	private model?: string;
+
+	@Command.arg({
+		description: 'Create a factory repository',
 		type: CommandArgumentType.BOOLEAN,
 		default: false
 	})
-	private queue: boolean = false;
+	private factory: boolean = false;
+
+	@Command.arg({
+		description: 'Create a singleton repository',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private singleton: boolean = false;
 
 	public async run(): Promise<void> {
 		if (!this.name) {
@@ -65,7 +78,8 @@ export class JobMaker extends Command {
 			module: this.module,
 			name: this.name,
 			alias: this.alias,
-			queue: this.queue ?? 'default'
+			scope: this.factory ? 'FACTORY' : this.singleton ? 'SINGLETON' : 'SINGLETON',
+			model: this.model
 		};
 
 		if (!answers.module && !config.mono) {
@@ -105,11 +119,24 @@ export class JobMaker extends Command {
 			{
 				type: 'text',
 				name: 'name',
-				message: 'Job Name:',
-				initial: 'SendEmailJob',
+				message: 'Repository Name:',
+				initial: 'UserRepository',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Job name cannot be empty';
+						return 'Repository name cannot be empty';
+					}
+
+					return true;
+				}
+			},
+			{
+				type: 'text',
+				name: 'model',
+				message: 'Model Name:',
+				initial: 'UserModel',
+				validate(value: string) {
+					if (value.length < 1) {
+						return 'Model name cannot be empty';
 					}
 
 					return true;
@@ -118,23 +145,34 @@ export class JobMaker extends Command {
 			{
 				type: 'text',
 				name: 'alias',
-				message: 'Job Alias:',
+				message: 'Repository Alias:',
 				initial(_, values) {
 					return values.name;
 				},
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Job alias cannot be empty';
+						return 'Repository alias cannot be empty';
 					}
 
 					return true;
 				}
 			},
 			{
-				type: 'text',
-				name: 'queue',
-				message: 'Job Queue:',
-				initial: 'default'
+				type: 'select',
+				name: 'scope',
+				message: 'Repository Scope:',
+				choices: [
+					{
+						title: 'SINGLETON',
+						value: 'SINGLETON',
+						description: 'A single instance of the repository is created.'
+					},
+					{
+						title: 'FACTORY',
+						value: 'FACTORY',
+						description: 'A new instance of the repository is created each time it is injected.'
+					}
+				]
 			}
 		];
 
@@ -149,8 +187,8 @@ export class JobMaker extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Job')) {
-			answers.name += 'Job';
+		if (!answers.name.endsWith('Repository')) {
+			answers.name += 'Repository';
 		}
 
 		if (!answers.alias) {
@@ -158,18 +196,23 @@ export class JobMaker extends Command {
 		}
 
 		// Get stub file
-		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/job.stub');
+		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/repository.stub');
 
 		// Format the stub content
-		const stub = formatter(await stubFile.text(), answers);
+		const stub = formatter(await stubFile.text(), {
+			...answers,
+			module: answers.module ?? 'root',
+			model_name: answers.model.replace('Model', '').toLowerCase()
+		});
 
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Job', ''));
-		const file = Bun.file(`${path}/jobs/${name}.job.ts`);
+		const name = snake(answers.name.replace('Repository', ''));
+		const file = Bun.file(`${path}/repositories/${name}.repository.ts`);
 		await file.write(stub);
 
-		this.success(`Job ${answers.name} created successfully.`);
+		this.success(`Repository ${answers.name} created successfully.`);
+		return;
 	}
 }

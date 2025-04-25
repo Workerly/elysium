@@ -18,13 +18,22 @@ import {
 	JobMaker,
 	MiddlewareMaker,
 	ModelMaker,
+	RepositoryMaker,
 	ServiceMaker
 } from './src/commands';
 
 const { App } = await import(`${process.cwd()}/src/app`);
 
 @App.register({
-	commands: [CommandMaker, ControllerMaker, JobMaker, MiddlewareMaker, ModelMaker, ServiceMaker]
+	commands: [
+		CommandMaker,
+		ControllerMaker,
+		JobMaker,
+		MiddlewareMaker,
+		ModelMaker,
+		RepositoryMaker,
+		ServiceMaker
+	]
 })
 class StyxApp extends App {}
 

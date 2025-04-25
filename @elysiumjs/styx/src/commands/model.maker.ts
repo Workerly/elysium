@@ -20,15 +20,26 @@ import { pascal, snake, trim } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
-import { Maker } from './maker';
 
 /**
  * Maker command for creating Elysium models.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class ModelMaker extends Maker {
+export class ModelMaker extends Command {
 	public static readonly command: string = 'make:model';
 	public static readonly description: string = 'Creates a new model.';
+
+	@Command.arg({
+		description: 'The name of the model to create',
+		type: CommandArgumentType.STRING
+	})
+	protected name?: string;
+
+	@Command.arg({
+		description: 'The module where the model will be created',
+		type: CommandArgumentType.STRING
+	})
+	protected module?: string;
 
 	@Command.arg({
 		name: 'table',

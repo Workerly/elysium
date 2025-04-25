@@ -20,15 +20,26 @@ import { snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
-import { Maker } from './maker';
 
 /**
  * Maker class for creating Elysium controllers.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class ControllerMaker extends Maker {
+export class ControllerMaker extends Command {
 	public static readonly command: string = 'make:controller';
 	public static readonly description: string = 'Creates a new controller.';
+
+	@Command.arg({
+		description: 'The name of the controller to create',
+		type: CommandArgumentType.STRING
+	})
+	protected name?: string;
+
+	@Command.arg({
+		description: 'The module where the controller will be created',
+		type: CommandArgumentType.STRING
+	})
+	protected module?: string;
 
 	@Command.arg({
 		description: 'Whether to create a HTTP controller',

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export * from './maker';
 export * from './command.maker';
 export * from './controller.maker';
 export * from './job.maker';
 export * from './middleware.maker';
 export * from './model.maker';
+export * from './repository.maker';
 export * from './service.maker';
