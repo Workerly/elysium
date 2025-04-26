@@ -107,6 +107,12 @@ const answers = await prompts(
 					description: 'Format code using Prettier (https://prettier.io)'
 				}
 			]
+		},
+		{
+			type: 'confirm',
+			name: 'git',
+			message: 'Initialize a Git repository?',
+			initial: true
 		}
 	],
 	{
@@ -124,7 +130,7 @@ const answers = await prompts(
 
 const s = c.spinner(`Creating project directory...`);
 
-const projectPath = join(cwd(), answers.project_path);
+const projectPath = join(cwd(), answers.project_path, answers.project_name);
 const projectExists = await exists(projectPath);
 
 if (projectExists && answers.override_path) {
@@ -274,6 +280,11 @@ await packagesJson.write(JSON.stringify(patchedPackageJson, null, 2));
 if (answers.features.includes('prettier')) {
 	s.update('Formatting code using Prettier...');
 	await Bun.$`cd ${projectPath} && bun run format`.quiet();
+}
+
+if (answers.git) {
+	s.update('Initializing Git repository...');
+	await Bun.$`cd ${projectPath} && git init`.quiet();
 }
 
 s.complete(`Project ${answers.project_name} created successfully`);
