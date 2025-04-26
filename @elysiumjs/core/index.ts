@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import './macros';
+
 export { type AppContext, Application } from './src/app';
 export { Cache } from './src/cache';
 export {

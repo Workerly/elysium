@@ -14,7 +14,7 @@
 
 import type { Elysia } from 'elysia';
 
-import { isObject, isPrimitive } from 'radash';
+import { isObject } from 'radash';
 
 export namespace Symbols {
 	export const app = Symbol('app');
