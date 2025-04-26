@@ -14,12 +14,15 @@
 
 import type { PromptObject } from 'prompts';
 
+import { join } from 'node:path';
+
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
 import { pascal, snake, trim } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
+import { getRootPath } from '../utils';
 
 /**
  * Maker command for creating Elysium models.
@@ -175,7 +178,7 @@ export class ModelMaker extends Command {
 		answers.canonicalName = answers.name.replace('Model', '');
 
 		// Get stub file
-		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/model.stub');
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/model.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);

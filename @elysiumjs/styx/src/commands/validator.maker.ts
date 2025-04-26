@@ -25,37 +25,24 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker class for creating Elysium jobs.
+ * Maker command for creating Elysium validators.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class JobMaker extends Command {
-	public static readonly command: string = 'make:job';
-	public static readonly description: string = 'Creates a new job.';
+export class ValidatorMaker extends Command {
+	public static readonly command: string = 'make:validator';
+	public static readonly description: string = 'Creates a new validator.';
 
 	@Command.arg({
-		description: 'The name of the job to create',
+		description: 'The name of the validator to create',
 		type: CommandArgumentType.STRING
 	})
 	protected name?: string;
 
 	@Command.arg({
-		description: 'The module where the job will be created',
+		description: 'The module where the validator will be created',
 		type: CommandArgumentType.STRING
 	})
 	protected module?: string;
-
-	@Command.arg({
-		description: 'The alias of the job to create',
-		type: CommandArgumentType.STRING
-	})
-	private alias?: string;
-
-	@Command.arg({
-		description: 'The name of the queue where the job will be dispatched',
-		type: CommandArgumentType.STRING,
-		default: 'default'
-	})
-	private queue: string = 'default';
 
 	public async run(): Promise<void> {
 		if (!this.name) {
@@ -66,9 +53,7 @@ export class JobMaker extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
-			name: this.name,
-			alias: this.alias,
-			queue: this.queue ?? 'default'
+			name: this.name
 		};
 
 		if (!answers.module && !config.mono) {
@@ -108,36 +93,15 @@ export class JobMaker extends Command {
 			{
 				type: 'text',
 				name: 'name',
-				message: 'Job Name:',
-				initial: 'SendEmailJob',
+				message: 'Validator Name:',
+				initial: 'LoginValidator',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Job name cannot be empty';
+						return 'Validator name cannot be empty';
 					}
 
 					return true;
 				}
-			},
-			{
-				type: 'text',
-				name: 'alias',
-				message: 'Job Alias:',
-				initial(_, values) {
-					return values.name;
-				},
-				validate(value: string) {
-					if (value.length < 1) {
-						return 'Job alias cannot be empty';
-					}
-
-					return true;
-				}
-			},
-			{
-				type: 'text',
-				name: 'queue',
-				message: 'Job Queue:',
-				initial: 'default'
 			}
 		];
 
@@ -152,16 +116,16 @@ export class JobMaker extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Job')) {
-			answers.name += 'Job';
+		if (!answers.name.endsWith('Validator')) {
+			answers.name += 'Validator';
 		}
 
-		if (!answers.alias) {
-			answers.alias = answers.name;
+		if (!answers.request_name) {
+			answers.request_name = answers.name.replace('Validator', 'Request');
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/job.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/validator.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -169,10 +133,11 @@ export class JobMaker extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Job', ''));
-		const file = Bun.file(`${path}/jobs/${name}.job.ts`);
+		const name = snake(answers.name.replace('Validator', ''));
+		const file = Bun.file(`${path}/validators/${name}.validator.ts`);
 		await file.write(stub);
 
-		this.success(`Job ${answers.name} created successfully.`);
+		this.success(`Validator ${answers.name} created successfully.`);
+		return;
 	}
 }

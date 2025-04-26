@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export * from './command.maker';
-export * from './controller.maker';
-export * from './job.maker';
-export * from './middleware.maker';
-export * from './model.maker';
-export * from './repository.maker';
-export * from './service.maker';
-export * from './validator.maker';
+import { dirname } from 'node:path';
+
+/**
+ * Gets the root path of the styx package.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export const getRootPath = () => {
+	return dirname(Bun.fileURLToPath(import.meta.url));
+};

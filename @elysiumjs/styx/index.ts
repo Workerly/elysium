@@ -19,7 +19,8 @@ import {
 	MiddlewareMaker,
 	ModelMaker,
 	RepositoryMaker,
-	ServiceMaker
+	ServiceMaker,
+	ValidatorMaker
 } from './src/commands';
 
 const { App } = await import(`${process.cwd()}/src/app`);
@@ -32,7 +33,8 @@ const { App } = await import(`${process.cwd()}/src/app`);
 		MiddlewareMaker,
 		ModelMaker,
 		RepositoryMaker,
-		ServiceMaker
+		ServiceMaker,
+		ValidatorMaker
 	]
 })
 class StyxApp extends App {}

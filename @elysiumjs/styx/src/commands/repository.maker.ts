@@ -14,12 +14,15 @@
 
 import type { PromptObject } from 'prompts';
 
+import { join } from 'node:path';
+
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
 import { snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
+import { getRootPath } from '../utils';
 
 /**
  * Maker command for creating Elysium repositories.
@@ -196,7 +199,7 @@ export class RepositoryMaker extends Command {
 		}
 
 		// Get stub file
-		const stubFile = Bun.file('./node_modules/@elysiumjs/styx/stubs/repository.stub');
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/repository.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), {
