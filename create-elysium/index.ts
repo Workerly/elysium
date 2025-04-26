@@ -1,3 +1,5 @@
+#!/usr/bin/env bun
+
 // Copyright (c) 2025-present Workbud Technologies Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,9 +13,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 import { cp, exists, mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { cwd } from 'node:process';
 
 import prompts from 'prompts';
@@ -21,6 +22,8 @@ import { assign, objectify, pascal, snake } from 'radash';
 
 import { Console, ConsoleFormat } from './console';
 import { getAppCode, getModuleCode } from './utils';
+
+const __dirname = dirname(Bun.fileURLToPath(import.meta.url));
 
 const c = new Console();
 
@@ -58,7 +61,7 @@ const answers = await prompts(
 		},
 		{
 			type(_, values) {
-				const list = Array.from(new Bun.Glob(`${values.project_path}/**`).scanSync());
+				const list = Array.from(new Bun.Glob(`${values.project_path}/*`).scanSync({ cwd: cwd() }));
 				return list.length > 0 ? 'toggle' : null;
 			},
 			name: 'override_path',
@@ -274,3 +277,11 @@ if (answers.features.includes('prettier')) {
 }
 
 s.complete(`Project ${answers.project_name} created successfully`);
+
+c.info(
+	`Open your new project in the terminal with ${c.format(`cd ${relative(cwd(), projectPath)}`, ConsoleFormat.BLUE, ConsoleFormat.BOLD)}`
+);
+
+c.info(
+	`Run ${c.format('bun styx serve', ConsoleFormat.BLUE, ConsoleFormat.BOLD)} to start the project`
+);
