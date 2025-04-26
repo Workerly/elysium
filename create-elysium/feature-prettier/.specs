@@ -1,0 +1,13 @@
+{
+	"packages": {
+		"dev": [
+			"@ianvs/prettier-plugin-sort-imports",
+			"prettier"
+		]
+	},
+	"patch": {
+		"scripts": {
+			"format": "prettier --write \"./**/*.ts\""
+		}
+	}
+}

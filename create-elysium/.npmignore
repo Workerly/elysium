@@ -1,0 +1,17 @@
+.git
+coverage
+tests
+node_modules
+src
+
+.gitignore
+.prettierignore
+.prettierrc
+.DS_Store
+
+bun.lock
+bunfig.toml
+bun.lockb
+
+index.ts
+tsconfig.json

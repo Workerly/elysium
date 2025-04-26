@@ -1,0 +1,22 @@
+{
+	"name": "{PROJECT_NAME}",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun --watch styx serve"
+	},
+	"imports": {
+		"#root/*": "./src/*.ts"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5.8.3"
+	},
+	"dependencies": {
+		"@elysiumjs/core": "latest",
+		"@elysiumjs/styx": "latest",
+		"reflect-metadata": "^0.2.2"
+	}
+}
