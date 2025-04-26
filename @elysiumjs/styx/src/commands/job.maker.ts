@@ -49,10 +49,10 @@ export class JobMaker extends Command {
 
 	@Command.arg({
 		description: 'The name of the queue where the job will be dispatched',
-		type: CommandArgumentType.BOOLEAN,
-		default: false
+		type: CommandArgumentType.STRING,
+		default: 'default'
 	})
-	private queue: boolean = false;
+	private queue: string = 'default';
 
 	public async run(): Promise<void> {
 		if (!this.name) {
