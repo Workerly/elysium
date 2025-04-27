@@ -435,9 +435,9 @@ export abstract class Application extends InteractsWithConsole {
 			this.constructor
 		) as AppProps;
 
-		Event.emit('elysium:server:before-init', this, this);
-
 		this.#elysia = new Elysia(server);
+
+		Event.emit('elysium:server:before-init', this, this);
 
 		this.#elysia.resolve({ as: 'global' }, ({ request }) => ({
 			tenant: request.headers.get('x-tenant-id') ?? 'public'
@@ -482,8 +482,6 @@ export abstract class Application extends InteractsWithConsole {
 				this._appContextStorage.disable();
 			});
 
-		Event.emit('elysium:server:after-init', this, this);
-
 		if (swagger) {
 			this.#elysia.use(await swaggerPlugin(swagger));
 		}
@@ -508,12 +506,13 @@ export abstract class Application extends InteractsWithConsole {
 			module.afterRegister();
 		}
 
+		Event.emit('elysium:server:after-init', this, this);
+
 		// Register the server
 		this.#elysia.listen(server?.port ?? (parseInt(process.env.PORT!, 10) || 3000));
 
 		process.on('SIGINT', () => {
-			this.#elysia.stop();
-			return process.exit(0);
+			this.#elysia.stop().then(() => process.exit(0));
 		});
 	}
 
