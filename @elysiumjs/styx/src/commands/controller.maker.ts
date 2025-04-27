@@ -267,6 +267,6 @@ export class ControllerMaker extends Command {
 		const file = Bun.file(`${path}/controllers/${answers.type}/${name}.controller.ts`);
 		await file.write(stub);
 
-		this.success(`Controller ${answers.name} created successfully.`);
+		this.success(`Controller ${this.bold(file.name!)} created successfully.`);
 	}
 }

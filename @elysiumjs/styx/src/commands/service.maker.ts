@@ -191,7 +191,6 @@ export class ServiceMaker extends Command {
 		const file = Bun.file(`${path}/services/${name}.service.ts`);
 		await file.write(stub);
 
-		this.success(`Service ${answers.name} created successfully.`);
-		return;
+		this.success(`Service ${this.bold(file.name!)} created successfully.`);
 	}
 }

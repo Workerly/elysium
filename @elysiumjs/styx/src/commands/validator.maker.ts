@@ -137,7 +137,6 @@ export class ValidatorMaker extends Command {
 		const file = Bun.file(`${path}/validators/${name}.validator.ts`);
 		await file.write(stub);
 
-		this.success(`Validator ${answers.name} created successfully.`);
-		return;
+		this.success(`Validator ${this.bold(file.name!)} created successfully.`);
 	}
 }

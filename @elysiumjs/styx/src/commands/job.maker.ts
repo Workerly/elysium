@@ -173,6 +173,6 @@ export class JobMaker extends Command {
 		const file = Bun.file(`${path}/jobs/${name}.job.ts`);
 		await file.write(stub);
 
-		this.success(`Job ${answers.name} created successfully.`);
+		this.success(`Job ${this.bold(file.name!)} created successfully.`);
 	}
 }

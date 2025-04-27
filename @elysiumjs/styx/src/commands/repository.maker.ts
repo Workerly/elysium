@@ -215,7 +215,6 @@ export class RepositoryMaker extends Command {
 		const file = Bun.file(`${path}/repositories/${name}.repository.ts`);
 		await file.write(stub);
 
-		this.success(`Repository ${answers.name} created successfully.`);
-		return;
+		this.success(`Repository ${this.bold(file.name!)} created successfully.`);
 	}
 }

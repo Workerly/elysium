@@ -190,7 +190,6 @@ export class ModelMaker extends Command {
 		const file = Bun.file(`${path}/models/${name}.model.ts`);
 		await file.write(stub);
 
-		this.success(`Model ${answers.name} created successfully.`);
-		return;
+		this.success(`Model ${this.bold(file.name!)} created successfully.`);
 	}
 }

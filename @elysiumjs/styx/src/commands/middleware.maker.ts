@@ -121,7 +121,7 @@ export class MiddlewareMaker extends Command {
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/command.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/middleware.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -133,6 +133,6 @@ export class MiddlewareMaker extends Command {
 		const file = Bun.file(`${path}/middlewares/${name}.middleware.ts`);
 		await file.write(stub);
 
-		this.success(`Middleware ${answers.name} created successfully.`);
+		this.success(`Middleware ${this.bold(file.name!)} created successfully.`);
 	}
 }

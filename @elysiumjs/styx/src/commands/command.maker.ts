@@ -14,7 +14,7 @@
 
 import type { PromptObject } from 'prompts';
 
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
@@ -162,6 +162,6 @@ export class CommandMaker extends Command {
 		const file = Bun.file(`${path}/commands/${name}.command.ts`);
 		await file.write(stub);
 
-		this.success(`Command ${answers.name} created successfully.`);
+		this.success(`Command ${this.bold(file.name!)} created successfully.`);
 	}
 }
