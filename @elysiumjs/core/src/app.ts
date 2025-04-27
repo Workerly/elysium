@@ -139,9 +139,6 @@ export abstract class Application extends InteractsWithConsole {
 	 */
 	public static register(props: AppProps = {}): ClassDecorator {
 		return function (target) {
-			// Default props
-			props = deepMerge<AppProps>({ modules: [], database: undefined, swagger: false }, props);
-
 			// Get metadata from the prototype chain
 			let parentMetadata: AppProps | undefined;
 			let proto = Object.getPrototypeOf(target);
@@ -162,7 +159,13 @@ export abstract class Application extends InteractsWithConsole {
 			}
 
 			// Merge with existing metadata on the current class (if any)
-			props = deepMerge<AppProps>(Reflect.getMetadata(Symbols.app, target) ?? {}, props);
+			const currentMetadata = Reflect.getMetadata(Symbols.app, target);
+			if (currentMetadata) {
+				props = deepMerge<AppProps>(currentMetadata, props);
+			}
+
+			// Default props
+			props = deepMerge<AppProps>({ modules: [], swagger: false }, props);
 
 			// Store the merged metadata
 			Reflect.defineMetadata(Symbols.app, props, target);

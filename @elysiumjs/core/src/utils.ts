@@ -14,7 +14,7 @@
 
 import type { Elysia } from 'elysia';
 
-import { isObject } from 'radash';
+import { isObject, isPrimitive } from 'radash';
 
 export namespace Symbols {
 	export const app = Symbol('app');
@@ -62,29 +62,29 @@ export function deepMerge<T extends Record<string, any | any[]>>(target: T, ...s
 				if (!target[key]) {
 					Object.assign(target, { [key]: source[key] });
 				}
-			} else {
-				if (Array.isArray(source[key])) {
-					if (!Array.isArray(target[key])) {
-						target[key] = [];
-					}
-					// Merge arrays by concatenating and removing duplicates for primitive values
-					if (source[key].length > 0 && !isObject(source[key][0])) {
-						target[key] = [...new Set([...target[key], ...source[key]])];
-					} else {
-						// For arrays of objects, merge each item
-						source[key].forEach((item: any, index: number) => {
-							if (isObject(item) && target[key][index]) {
-								target[key][index] = deepMerge(target[key][index], item);
-							} else {
-								if (!target[key].includes(item)) {
-									target[key].push(item);
-								}
-							}
-						});
-					}
-				} else {
-					deepMerge(target[key], source[key]);
+			} else if (Array.isArray(source[key])) {
+				if (!Array.isArray(target[key])) {
+					target[key] = [];
 				}
+				// Merge arrays by concatenating and removing duplicates for primitive values
+				if (source[key].length > 0 && !isObject(source[key][0])) {
+					target[key] = [...new Set([...target[key], ...source[key]])];
+				} else {
+					// For arrays of objects, merge each item
+					source[key].forEach((item: any, index: number) => {
+						if (isObject(item) && target[key][index]) {
+							target[key][index] = deepMerge(target[key][index], item);
+						} else {
+							if (!target[key].includes(item)) {
+								target[key].push(item);
+							}
+						}
+					});
+				}
+			} else if (isPrimitive(source[key])) {
+				target[key] ??= source[key];
+			} else {
+				deepMerge(target[key], source[key]);
 			}
 		}
 	}
