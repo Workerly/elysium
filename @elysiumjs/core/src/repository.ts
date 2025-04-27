@@ -181,7 +181,7 @@ export const Repository = <
 		/**
 		 * The drizzle's table schema wrapped by this repository.
 		 */
-		public static get table() {
+		public static get table(): ReturnType<typeof pgTable<string, TColumnsMap>> {
 			if (model.supportTenancy) {
 				const tenant = Tenancy.getCurrentTenant() ?? 'public';
 				return Tenancy.withTenant(tenant, model);

@@ -278,21 +278,21 @@ export namespace Tenancy {
 	>(
 		tenant: string,
 		model: T
-	) => {
+	): ReturnType<typeof pgTable<string, TColumnsMap>> => {
 		if (tenant === 'public') {
 			return pgTable(model.tableName, model.columns);
 		}
 
 		const tableName = `${tenant}.${model.tableName}`;
 		if (tenantSchemas.has(tableName)) {
-			return tenantSchemas.get(tableName)!;
+			return tenantSchemas.get(tableName)! as ReturnType<typeof pgTable<string, TColumnsMap>>;
 		}
 
 		const tenantSchema = getTenantSchema(tenant);
 		const schemaTable = tenantSchema.table(model.tableName, model.columns);
 		tenantSchemas.set(tableName, schemaTable);
 
-		return schemaTable;
+		return schemaTable as unknown as ReturnType<typeof pgTable<string, TColumnsMap>>;
 	};
 
 	/**
