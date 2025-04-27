@@ -34,8 +34,8 @@ export namespace Env {
 	 * @param name The name of the environment variable.
 	 * @returns The value of the environment variable.
 	 */
-	export const get = <TKey extends keyof AppEnv, TValue = AppEnv[TKey]>(name: TKey): TValue => {
-		return env.get(name) as TValue;
+	export const get = <TKey extends keyof AppEnv>(name: TKey): AppEnv[TKey] => {
+		return env.get(name) as AppEnv[TKey];
 	};
 
 	/**
