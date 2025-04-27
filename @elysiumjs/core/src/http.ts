@@ -12,15 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type {
-	Context as ElysiaContext,
-	Handler,
-	HTTPMethod,
-	PreContext,
-	SingletonBase,
-	TSchema
-} from 'elysia';
-import type { Class, Merge } from 'type-fest';
+import type { AppHttpContext } from '@elysiumjs/core';
+import type { Context as ElysiaContext, Handler, HTTPMethod, PreContext, TSchema } from 'elysia';
+import type { Class, MergeDeep } from 'type-fest';
 import type { Middleware } from './middleware';
 import type { Module } from './module';
 
@@ -140,8 +134,8 @@ type HttpRequestHandlerRegistrationProps = Pick<
  * Metadata for the HTTP context.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type Singleton<TController = unknown, TModule extends Module = Module> = Merge<
-	SingletonBase,
+export type Singleton<TController = unknown, TModule extends Module = Module> = MergeDeep<
+	AppHttpContext,
 	{
 		decorator: {
 			[key: string]: unknown;

@@ -26,4 +26,10 @@ declare module '@elysiumjs/core' {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	type AppEnv = Record<string, unknown>;
+
+	/**
+	 * The type for the context of the application.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 */
+	type AppHttpContext = import('elysia').SingletonBase;
 }
