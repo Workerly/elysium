@@ -24,6 +24,7 @@ export {
 } from './src/command';
 export { ConsoleFormat, InteractsWithConsole } from './src/console';
 export { Database } from './src/database';
+export { Env } from './src/env';
 export { type EventData, type EventHandler, Event } from './src/event';
 export { type Context, type Route, HttpControllerScope, Http } from './src/http';
 export { Job } from './src/job';

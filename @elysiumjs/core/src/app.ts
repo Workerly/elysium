@@ -13,10 +13,10 @@
 // limitations under the License.
 
 import type { ElysiaSwaggerConfig } from '@elysiajs/swagger';
-import type { ElysiaConfig, ErrorContext, PreContext } from 'elysia';
+import type { ElysiaConfig, ErrorContext, TSchema } from 'elysia';
 import type { CommandClass } from './command';
 import type { DatabaseConnectionProps } from './database';
-import type { Route, Singleton } from './http';
+import type { Route } from './http';
 import type { ModuleClass } from './module';
 import type { RedisConnectionProps } from './redis';
 
@@ -24,10 +24,12 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { parseArgs } from 'node:util';
 
 import { swagger as swaggerPlugin } from '@elysiajs/swagger';
+import { Value } from '@sinclair/typebox/value';
 import { Elysia } from 'elysia';
 
 import { ConsoleFormat, InteractsWithConsole } from './console';
 import { Database } from './database';
+import { initEnv } from './env';
 import { Event } from './event';
 import { applyMiddlewares } from './middleware';
 import { Redis } from './redis';
@@ -100,6 +102,11 @@ export type AppProps = {
 	 * Set it to `false` to disable Swagger documentation.
 	 */
 	swagger?: ElysiaSwaggerConfig<Route> | false;
+
+	/**
+	 * The validation schema for the application environment.
+	 */
+	env?: TSchema;
 };
 
 /**
@@ -178,14 +185,25 @@ export abstract class Application extends InteractsWithConsole {
 	public constructor() {
 		super();
 
+		const { env, debug }: AppProps = Reflect.getMetadata(Symbols.app, this.constructor) ?? {};
+		this.#debug = debug ?? false;
+
+		if (env) {
+			const rawEnv = Value.Convert(env, Value.Clone(Bun.env));
+
+			if (this.#debug && !Value.Check(env, rawEnv)) {
+				const error = Value.Errors(env, rawEnv).First();
+				this.trace(error!, 'Invalid environment configuration');
+			}
+
+			initEnv(Value.Clean(env, rawEnv) as Record<string, unknown>);
+		} else {
+			initEnv(Bun.env);
+		}
+
 		Service.instance('elysium.app', this);
 
-		const { debug, database, redis } = Reflect.getMetadata(
-			Symbols.app,
-			this.constructor
-		) as AppProps;
-
-		this.#debug = debug ?? false;
+		const { database, redis } = Reflect.getMetadata(Symbols.app, this.constructor) as AppProps;
 
 		if (redis) {
 			for (const connectionName in redis.connections) {
@@ -435,6 +453,23 @@ export abstract class Application extends InteractsWithConsole {
 			.onError(async (e) => {
 				if (await this.onError(e)) {
 					Event.emit('elysium:error', e);
+
+					let data = {};
+
+					switch (e.code) {
+						case 'VALIDATION': {
+							data = {
+								scope: e.error.type,
+								code: e.error.message
+							};
+							break;
+						}
+					}
+
+					return {
+						type: e.code,
+						data
+					};
 				}
 			})
 			.onStart(async (elysia) => {

@@ -166,7 +166,7 @@ export class InteractsWithConsole {
 			this.write(this.format('Additional Information:', ConsoleFormat.BOLD));
 			Object.keys(customProps).forEach((prop) => {
 				const value = error[prop];
-				this.write(`\t${prop}: ${JSON.stringify(value)}`, false);
+				this.write(`\t${prop}: ${JSON.stringify(value)}`);
 			});
 		}
 	}
