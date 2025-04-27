@@ -421,10 +421,12 @@ export abstract class Application extends InteractsWithConsole {
 
 		this.#elysia = new Elysia(server);
 
-		this.#elysia
-			.onRequest((c: PreContext<Singleton>) => {
-				c.tenant = c.request.headers.get('x-tenant-id') ?? 'public';
+		this.#elysia.resolve({ as: 'global' }, ({ request }) => ({
+			tenant: request.headers.get('x-tenant-id') ?? 'public'
+		}));
 
+		this.#elysia
+			.onRequest((c) => {
 				if (this.isDebug) {
 					// TODO: Use the logger service here
 					console.log(c.request.method, c.request.url);

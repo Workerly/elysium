@@ -20,7 +20,7 @@ import type {
 	SingletonBase,
 	TSchema
 } from 'elysia';
-import type { Class } from 'type-fest';
+import type { Class, Merge } from 'type-fest';
 import type { Middleware } from './middleware';
 import type { Module } from './module';
 
@@ -140,22 +140,31 @@ type HttpRequestHandlerRegistrationProps = Pick<
  * Metadata for the HTTP context.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type Singleton<TController = unknown, TModule extends Module = Module> = SingletonBase & {
-	/**
-	 * The controller instance.
-	 */
-	controller: TController;
+export type Singleton<TController = unknown, TModule extends Module = Module> = Merge<
+	SingletonBase,
+	{
+		decorator: {
+			[key: string]: unknown;
 
-	/**
-	 * The module instance.
-	 */
-	module: TModule;
+			/**
+			 * The controller instance.
+			 */
+			controller: () => TController;
 
-	/**
-	 * The tenant ID.
-	 */
-	tenant: string;
-};
+			/**
+			 * The module instance.
+			 */
+			module: TModule;
+		};
+
+		resolve: {
+			/**
+			 * The tenant ID.
+			 */
+			readonly tenant: string;
+		};
+	}
+>;
 
 /**
  * The Elysia context with the controller injected.
@@ -165,6 +174,8 @@ export type Context<TController = unknown, TModule extends Module = Module> = El
 	{},
 	Singleton<TController, TModule>
 >;
+
+export type ElysiaApp = Elysia<Route, Singleton>;
 
 const registerHttpRequestHandler = (props: HttpRequestHandlerRegistrationProps) => {
 	const body = Reflect.getMetadata('http:body', props.target, props.propertyKey);
@@ -295,32 +306,30 @@ export namespace Http {
 	 */
 	export const controller = (props: HttpControllerProps = { path: '/' }) => {
 		return function (target: Class<any>) {
-			async function handleHttp(): Promise<Elysia<Route>> {
+			async function handleHttp(): Promise<ElysiaApp> {
 				// TODO: Use the logger service here
 				console.log(`Registering HTTP route for ${props.path} using ${target.name}`);
 				await nextTick();
 
 				props = assign({ path: '/', scope: HttpControllerScope.SERVER, tags: [] }, props);
 
-				const app = new Elysia({
+				const app: ElysiaApp = new Elysia({
 					prefix: props.path,
 					name: target.name
 				});
 
 				if (props.scope === HttpControllerScope.SERVER) {
-					app.decorate('controller', Service.make(target));
+					const controller = Service.make(target);
+					app.decorate('controller', () => controller);
 				} else if (props.scope === HttpControllerScope.REQUEST) {
-					app.resolve({ as: 'scoped' }, () => ({
-						controller: Service.make(target)
-					}));
+					app.decorate('controller', () => Service.make(target));
 				}
 
 				const onRequest = Reflect.getMetadata('http:onRequest', target) ?? {};
 				if (onRequest.handler) {
-					app.onRequest((c: PreContext<SingletonBase & { controller: any }>) => {
-						const controller = c.controller;
-						const handler = onRequest.handler.bind(controller);
-						return handler(c);
+					app.onRequest((c: PreContext<Singleton>) => {
+						const controller = c.controller();
+						return onRequest.handler.call(controller, c);
 					});
 				}
 
@@ -375,20 +384,18 @@ export namespace Http {
 
 					const getHandler = () => {
 						const initTransactedHandler = (c: Context) => {
-							const controller = c.controller;
-
 							if (isTransactional) {
 								return function (...args: unknown[]) {
 									return Database.getDefaultConnection().transaction((tx) => {
 										return Application.context.run(
 											new Map([
-												['tenant', c.tenant],
+												['tenant', c.tenant as unknown],
 												['http:context', c],
 												['db:tx', tx]
 											]),
 											() => {
 												try {
-													return route.handler.call(controller, ...args) as Promise<unknown>;
+													return route.handler.call(c.controller(), ...args) as Promise<unknown>;
 												} catch (e) {
 													tx.rollback();
 													throw e;
@@ -402,10 +409,10 @@ export namespace Http {
 							return function (...args: unknown[]) {
 								return Application.context.run(
 									new Map([
-										['tenant', c.tenant],
+										['tenant', c.tenant as unknown],
 										['http:context', c]
 									]),
-									() => route.handler.call(controller, ...args) as Promise<unknown>
+									() => route.handler.call(c.controller(), ...args) as Promise<unknown>
 								);
 							};
 						};
@@ -455,13 +462,13 @@ export namespace Http {
 					app.route(route.method, route.path, getHandler(), {
 						// @ts-ignore
 						config: {},
-						beforeHandle(c: Context) {
+						beforeHandle(c) {
 							return executeMiddlewareChain(mi, c, 'onBeforeHandle');
 						},
-						afterHandle(c: Context) {
+						afterHandle(c) {
 							return executeMiddlewareChain(mi, c, 'onAfterHandle');
 						},
-						afterResponse(c: Context) {
+						afterResponse(c) {
 							return executeMiddlewareChain(mi, c, 'onAfterResponse');
 						},
 						detail: {

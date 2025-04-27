@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Elysia } from 'elysia';
+import type { AnyElysia } from 'elysia';
 import type { Class } from 'type-fest';
-import type { Context, Route } from './http';
+import type { Context } from './http';
 
 import { Application } from './app';
 import { Service } from './service';
@@ -27,9 +27,9 @@ import { Symbols } from './utils';
  * @param context The context to pass to each middleware.
  * @param method The method to call on each middleware.
  */
-export const executeMiddlewareChain = <T extends Context>(
+export const executeMiddlewareChain = (
 	middlewares: Middleware[],
-	context: T,
+	context: any,
 	method: keyof Middleware
 ): Promise<any> => {
 	return Application.context.run(
@@ -58,7 +58,7 @@ export const executeMiddlewareChain = <T extends Context>(
  * @param middlewares The list of middlewares to apply.
  * @param plugin The Elysia plugin instance.
  */
-export const applyMiddlewares = (middlewares: Class<Middleware>[], plugin: Elysia<Route>) => {
+export const applyMiddlewares = (middlewares: Class<Middleware>[], plugin: AnyElysia) => {
 	const mi = middlewares.map((middleware) => Service.make<Middleware>(middleware));
 
 	plugin.onBeforeHandle((c) => {
