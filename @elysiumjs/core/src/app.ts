@@ -226,7 +226,13 @@ export abstract class Application extends InteractsWithConsole {
 		}
 
 		// Run the application
-		this.run().then(() => Event.emit('elysium:app:launched', this, this));
+		this.run()
+			.then(() => Event.emit('elysium:app:launched', this, this))
+			.catch((error) => {
+				Event.emit('elysium:error', error);
+				this.trace(error, 'An error occurred while launching the application');
+				process.exit(1);
+			});
 	}
 
 	/**

@@ -47,4 +47,12 @@ export namespace Env {
 	export const exists = <TKey extends keyof AppEnv>(name: TKey): boolean => {
 		return env.has(name);
 	};
+
+	/**
+	 * Clears the environment variables.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 */
+	export const clear = () => {
+		env.clear();
+	};
 }

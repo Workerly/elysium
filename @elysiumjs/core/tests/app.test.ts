@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { ValueError } from '@sinclair/typebox/value';
 import type { AppContext } from '../src/app';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 
+import { Value } from '@sinclair/typebox/value';
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 
 import { Application } from '../src/app';
 import { Database } from '../src/database';
+import * as Env from '../src/env';
 import { Event } from '../src/event';
 import { Middleware } from '../src/middleware';
 import { Module } from '../src/module';
@@ -106,6 +109,105 @@ describe('Application class', () => {
 			expect(instance.isDebug).toBe(true);
 		});
 
+		it('should handle the case when no environment configuration is provided', () => {
+			const initEnvSpy = spyOn(Env, 'initEnv');
+
+			// Create a test class with no env configuration
+			@Application.register()
+			class TestApp extends Application {
+				// Override run to avoid actual execution
+				protected async run(): Promise<void> {
+					return Promise.resolve();
+				}
+			}
+
+			// Create an instance
+			new TestApp();
+
+			// Check if initEnv was called with Bun.env
+			expect(initEnvSpy).toHaveBeenCalledWith(Bun.env);
+		});
+
+		it('should validate and handle invalid environment configuration when debug is enabled', () => {
+			// Mock dependencies
+			const traceSpy = spyOn(Application.prototype, 'trace');
+			const errorFirstMock: ValueError = {
+				type: 43,
+				path: '/TEST_VAR',
+				message: 'Expected string',
+				errors: [],
+				value: {},
+				schema: t.Object({ TEST_VAR: t.String() })
+			};
+			const valueCheckSpy = spyOn(Value, 'Check').mockReturnValueOnce(false);
+			// @ts-expect-error The type is incorrect
+			const valueErrorsSpy = spyOn(Value, 'Errors').mockReturnValueOnce({
+				First: () => errorFirstMock
+			});
+			const valueConvertSpy = spyOn(Value, 'Convert').mockReturnValueOnce({});
+			const valueCleanSpy = spyOn(Value, 'Clean').mockReturnValueOnce({});
+			const initEnvSpy = spyOn(Env, 'initEnv');
+
+			// Create test environment schema
+			const envSchema = errorFirstMock.schema;
+
+			// Create a test class with debug mode enabled and environment schema
+			@Application.register({
+				debug: true,
+				env: envSchema
+			})
+			class TestApp extends Application {
+				protected async run(): Promise<void> {
+					return Promise.resolve();
+				}
+			}
+
+			// Create an instance
+			new TestApp();
+
+			// Verify that validation was performed and error was traced
+			expect(valueCheckSpy).toHaveBeenCalled();
+			expect(valueErrorsSpy).toHaveBeenCalled();
+			expect(traceSpy).toHaveBeenCalledWith(errorFirstMock, 'Invalid environment configuration');
+			expect(valueCleanSpy).toHaveBeenCalled();
+			expect(initEnvSpy).toHaveBeenCalledWith({});
+		});
+
+		it('should properly initialize environment with Value.Clean result when env is provided', () => {
+			// Mock dependencies
+			const valueCloneSpy = spyOn(Value, 'Clone').mockReturnValueOnce({ TEST_VAR: 'test_value' });
+			const valueConvertSpy = spyOn(Value, 'Convert').mockReturnValueOnce({
+				TEST_VAR: 'test_value'
+			});
+			const valueCheckSpy = spyOn(Value, 'Check').mockReturnValueOnce(true);
+			const valueCleanSpy = spyOn(Value, 'Clean').mockReturnValueOnce({
+				TEST_VAR: 'cleaned_value'
+			});
+			const initEnvSpy = spyOn(Env, 'initEnv');
+
+			// Create test environment schema
+			const envSchema = t.Object({ TEST_VAR: t.String() });
+
+			// Create a test class with environment schema
+			@Application.register({
+				env: envSchema
+			})
+			class TestApp extends Application {
+				protected async run(): Promise<void> {
+					return Promise.resolve();
+				}
+			}
+
+			// Create an instance
+			new TestApp();
+
+			// Verify that the environment was properly initialized with the cleaned value
+			expect(valueCloneSpy).toHaveBeenCalledWith(Bun.env);
+			expect(valueConvertSpy).toHaveBeenCalledWith(envSchema, { TEST_VAR: 'test_value' });
+			expect(valueCleanSpy).toHaveBeenCalled();
+			expect(initEnvSpy).toHaveBeenCalledWith({ TEST_VAR: 'cleaned_value' });
+		});
+
 		it('should register Redis connections if provided', () => {
 			const registerConnectionSpy = spyOn(Redis, 'registerConnection');
 			const connectionExistsSpy = spyOn(Redis, 'connectionExists');
@@ -131,6 +233,66 @@ describe('Application class', () => {
 			});
 			expect(connectionExistsSpy).toHaveBeenCalledWith('main');
 			expect(setDefaultConnectionSpy).toHaveBeenCalledWith('main');
+		});
+
+		it('should set default Redis connection only when the specified connection exists', () => {
+			// Mock Redis methods
+			const registerConnectionSpy = spyOn(Redis, 'registerConnection');
+			const connectionExistsSpy = spyOn(Redis, 'connectionExists');
+			const setDefaultConnectionSpy = spyOn(Redis, 'setDefaultConnection');
+
+			// First test: connection exists, should set default
+			connectionExistsSpy.mockReturnValueOnce(true);
+
+			// Create a test class with Redis configuration where connection exists
+			@Application.register({
+				redis: {
+					default: 'main',
+					connections: {
+						main: { url: 'redis://localhost:6379' }
+					}
+				}
+			})
+			class TestAppWithExistingConnection extends Application {}
+
+			// Create an instance
+			new TestAppWithExistingConnection();
+
+			// Check if default Redis connection was set
+			expect(registerConnectionSpy).toHaveBeenCalledWith('main', {
+				url: 'redis://localhost:6379'
+			});
+			expect(connectionExistsSpy).toHaveBeenCalledWith('main');
+			expect(setDefaultConnectionSpy).toHaveBeenCalledWith('main');
+
+			// Clear calls for next test
+			registerConnectionSpy.mockClear();
+			connectionExistsSpy.mockClear();
+			setDefaultConnectionSpy.mockClear();
+
+			// Second test: connection doesn't exist, should not set default
+			connectionExistsSpy.mockReturnValueOnce(false);
+
+			// Create a test class with Redis configuration where connection doesn't exist
+			@Application.register({
+				redis: {
+					default: 'missing',
+					connections: {
+						other: { url: 'redis://localhost:6380' }
+					}
+				}
+			})
+			class TestAppWithMissingConnection extends Application {}
+
+			// Create an instance
+			new TestAppWithMissingConnection();
+
+			// Check if registration was called but default connection was not set
+			expect(registerConnectionSpy).toHaveBeenCalledWith('other', {
+				url: 'redis://localhost:6380'
+			});
+			expect(connectionExistsSpy).toHaveBeenCalledWith('missing');
+			expect(setDefaultConnectionSpy).not.toHaveBeenCalled();
 		});
 
 		it('should register Database connections if provided', () => {
@@ -160,7 +322,115 @@ describe('Application class', () => {
 			expect(setDefaultConnectionSpy).toHaveBeenCalledWith('main');
 		});
 
-		it.todo('should emit an event when the application is launched', async () => {
+		it('should set default Database connection only when the specified connection exists', () => {
+			// Mock Database methods
+			const registerConnectionSpy = spyOn(Database, 'registerConnection');
+			const connectionExistsSpy = spyOn(Database, 'connectionExists');
+			const setDefaultConnectionSpy = spyOn(Database, 'setDefaultConnection');
+
+			// First test: connection exists, should set default
+			connectionExistsSpy.mockReturnValueOnce(true);
+
+			// Create a test class with Database configuration where connection exists
+			@Application.register({
+				database: {
+					default: 'main',
+					connections: {
+						main: { connection: 'postgresql://user:pass@localhost:5432/db' }
+					}
+				}
+			})
+			class TestAppWithExistingConnection extends Application {}
+
+			// Create an instance
+			new TestAppWithExistingConnection();
+
+			// Check if default Database connection was set
+			expect(registerConnectionSpy).toHaveBeenCalledWith('main', {
+				connection: 'postgresql://user:pass@localhost:5432/db'
+			});
+			expect(connectionExistsSpy).toHaveBeenCalledWith('main');
+			expect(setDefaultConnectionSpy).toHaveBeenCalledWith('main');
+
+			// Clear calls for next test
+			registerConnectionSpy.mockClear();
+			connectionExistsSpy.mockClear();
+			setDefaultConnectionSpy.mockClear();
+
+			// Second test: connection doesn't exist, should not set default
+			connectionExistsSpy.mockReturnValueOnce(false);
+
+			// Create a test class with Database configuration where connection doesn't exist
+			@Application.register({
+				database: {
+					default: 'missing',
+					connections: {
+						other: { connection: 'postgresql://user:pass@localhost:5433/db2' }
+					}
+				}
+			})
+			class TestAppWithMissingConnection extends Application {}
+
+			// Create an instance
+			new TestAppWithMissingConnection();
+
+			// Check if registration was called but default connection was not set
+			expect(registerConnectionSpy).toHaveBeenCalledWith('other', {
+				connection: 'postgresql://user:pass@localhost:5433/db2'
+			});
+			expect(connectionExistsSpy).toHaveBeenCalledWith('missing');
+			expect(setDefaultConnectionSpy).not.toHaveBeenCalled();
+		});
+
+		it('should handle exceptions thrown by the run method', async () => {
+			// Mock process.exit to prevent tests from exiting
+			const originalExit = process.exit;
+			process.exit = mock() as any;
+
+			// Mock Event.emit to verify it's not called when run throws
+			const emitSpy = spyOn(Event, 'emit');
+
+			// Create a test class that throws in run()
+			@Application.register()
+			class ErrorApp extends Application {
+				protected async run(): Promise<void> {
+					throw new Error('Test error in run method');
+				}
+			}
+
+			// Create an instance, which should call run() and handle the error
+			try {
+				new ErrorApp();
+
+				await nextTick(); // run() is called
+				await nextTick(); // then/catch is called
+
+				// Verify that the app:launched event was not emitted
+				expect(emitSpy).not.toHaveBeenCalledWith(
+					'elysium:app:launched',
+					expect.any(ErrorApp),
+					expect.any(ErrorApp)
+				);
+
+				expect(emitSpy).toHaveBeenCalledWith(
+					'elysium:error',
+					expect.objectContaining({
+						message: 'Test error in run method',
+						name: 'Error',
+						stack: expect.any(String)
+					})
+				);
+
+				expect(process.exit).toHaveBeenCalledWith(1);
+			} finally {
+				// Restore original exit function
+				process.exit = originalExit;
+			}
+		});
+
+		it('should emit an event when the application is launched', async () => {
+			const emitSpy = spyOn(Event, 'emit');
+
 			// Create a test class
 			@Application.register()
 			class TestApp extends Application {
@@ -170,16 +440,15 @@ describe('Application class', () => {
 				}
 			}
 
-			const emitSpy = spyOn(Event, 'emit');
-
 			// Create an instance
 			const instance = new TestApp();
 
 			// Wait for the next tick to allow the event to be emitted
-			await nextTick();
+			await nextTick(); // run() is called
+			await nextTick(); // then/catch is called
 
 			// Check if the event was emitted
-			// expect(emitSpy).toHaveBeenCalledWith('elysium:app:launched', instance, instance);
+			expect(emitSpy).toHaveBeenCalledWith('elysium:app:launched', instance, instance);
 		});
 	});
 

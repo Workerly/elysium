@@ -64,11 +64,11 @@ export function deepMerge<T extends Record<string, any | any[]>>(target: T, ...s
 				}
 			} else if (Array.isArray(source[key])) {
 				if (!Array.isArray(target[key])) {
-					target[key] = [];
+					target[key] = [] as any;
 				}
 				// Merge arrays by concatenating and removing duplicates for primitive values
 				if (source[key].length > 0 && !isObject(source[key][0])) {
-					target[key] = [...new Set([...target[key], ...source[key]])];
+					target[key] = [...new Set([...target[key], ...source[key]])] as any;
 				} else {
 					// For arrays of objects, merge each item
 					source[key].forEach((item: any, index: number) => {
