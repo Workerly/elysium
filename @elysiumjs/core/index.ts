@@ -14,7 +14,7 @@
 
 import './macros';
 
-export { type AppContext, Application } from './src/app';
+export { type AppContext, type ElysiumPlugin, Application } from './src/app';
 export { Cache } from './src/cache';
 export {
 	type CommandArgumentProps,

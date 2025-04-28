@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import type { ElysiaSwaggerConfig } from '@elysiajs/swagger';
-import type { ElysiaConfig, ErrorContext, TSchema } from 'elysia';
+import type { AnyElysia, ElysiaConfig, ErrorContext, TSchema } from 'elysia';
 import type { CommandClass } from './command';
 import type { DatabaseConnectionProps } from './database';
 import type { Route } from './http';
@@ -35,6 +35,12 @@ import { applyMiddlewares } from './middleware';
 import { Redis } from './redis';
 import { Service } from './service';
 import { deepMerge, Symbols } from './utils';
+
+/**
+ * An application plugin, consisting of a function that returns an Elysia instance.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type ElysiumPlugin = (app: Application) => Promise<AnyElysia>;
 
 /**
  * Properties required when declaring an app using the `@app()` decorator.
@@ -107,6 +113,11 @@ export type AppProps = {
 	 * The validation schema for the application environment.
 	 */
 	env?: TSchema;
+
+	/**
+	 * The list of plugins to load.
+	 */
+	plugins?: ElysiumPlugin[];
 };
 
 /**
@@ -193,7 +204,7 @@ export abstract class Application extends InteractsWithConsole {
 
 			if (this.#debug && !Value.Check(env, rawEnv)) {
 				const error = Value.Errors(env, rawEnv).First();
-				this.trace(error!, 'Invalid environment configuration');
+				this.trace(error! as unknown as Error, 'Invalid environment configuration');
 			}
 
 			initEnv(Value.Clean(env, rawEnv) as Record<string, unknown>);
@@ -436,12 +447,17 @@ export abstract class Application extends InteractsWithConsole {
 	 * Starts the server on the specified port.
 	 */
 	private async commandServe(): Promise<void> {
-		const { server, modules, swagger } = Reflect.getMetadata(
+		const { server, modules, swagger, plugins } = Reflect.getMetadata(
 			Symbols.app,
 			this.constructor
 		) as AppProps;
 
-		this.#elysia = new Elysia(server);
+		this.#elysia = new Elysia(server).onRequest((c) => {
+			if (this.isDebug) {
+				// TODO: Use the logger service here
+				console.log(c.request.method, c.request.url);
+			}
+		});
 
 		Event.emit('elysium:server:before-init', this, this);
 
@@ -449,13 +465,18 @@ export abstract class Application extends InteractsWithConsole {
 			tenant: request.headers.get('x-tenant-id') ?? 'public'
 		}));
 
+		if (swagger) {
+			this.#elysia.use(await swaggerPlugin(swagger));
+		}
+
+		if (plugins && plugins.length > 0) {
+			this.debug('Registering plugins...');
+			for (const plugin of plugins) {
+				this.#elysia.use(await plugin(this));
+			}
+		}
+
 		this.#elysia
-			.onRequest((c) => {
-				if (this.isDebug) {
-					// TODO: Use the logger service here
-					console.log(c.request.method, c.request.url);
-				}
-			})
 			.onError(async (e) => {
 				if (await this.onError(e)) {
 					Event.emit('elysium:error', e);
@@ -487,10 +508,6 @@ export abstract class Application extends InteractsWithConsole {
 				Event.emit('elysium:server:stop', elysia, this);
 				this._appContextStorage.disable();
 			});
-
-		if (swagger) {
-			this.#elysia.use(await swaggerPlugin(swagger));
-		}
 
 		const middlewares = Reflect.getMetadata(Symbols.middlewares, this.constructor) ?? [];
 		applyMiddlewares(middlewares, this.#elysia);
