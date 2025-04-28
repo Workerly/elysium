@@ -477,24 +477,82 @@ export abstract class Application extends InteractsWithConsole {
 		}
 
 		this.#elysia
-			.onError(async (e) => {
+			.onError({ as: 'global' }, async (e) => {
 				if (await this.onError(e)) {
 					Event.emit('elysium:error', e);
 
 					let data = {};
 
-					switch (e.code) {
-						case 'VALIDATION': {
-							data = {
-								scope: e.error.type,
-								code: e.error.message
-							};
-							break;
+					if (typeof e.code === 'number') {
+						data = {
+							message: e.error.response
+						};
+					} else {
+						switch (e.code) {
+							case 'VALIDATION': {
+								data = {
+									scope: e.error.type,
+									code: e.error.message
+								};
+								break;
+							}
+							case 'INTERNAL_SERVER_ERROR': {
+								data = {
+									message: e.error.message
+								};
+								break;
+							}
 						}
 					}
 
+					const type = (() => {
+						if (typeof e.code === 'string') return e.code;
+						else {
+							switch (e.code) {
+								case 500:
+									return 'INTERNAL_SERVER_ERROR';
+								case 400:
+									return 'BAD_REQUEST';
+								case 401:
+									return 'UNAUTHORIZED';
+								case 403:
+									return 'FORBIDDEN';
+								case 404:
+									return 'NOT_FOUND';
+								case 405:
+									return 'METHOD_NOT_ALLOWED';
+								case 409:
+									return 'CONFLICT';
+								case 429:
+									return 'TOO_MANY_REQUESTS';
+								case 422:
+									return 'UNPROCESSABLE_ENTITY';
+								case 426:
+									return 'UPGRADE_REQUIRED';
+								case 428:
+									return 'PRECONDITION_REQUIRED';
+								case 431:
+									return 'REQUEST_HEADER_FIELDS_TOO_LARGE';
+								case 451:
+									return 'UNAVAILABLE_FOR_LEGAL_REASONS';
+								case 501:
+									return 'NOT_IMPLEMENTED';
+								case 502:
+									return 'BAD_GATEWAY';
+								case 503:
+									return 'SERVICE_UNAVAILABLE';
+								case 504:
+									return 'GATEWAY_TIMEOUT';
+								case 505:
+									return 'HTTP_VERSION_NOT_SUPPORTED';
+							}
+						}
+
+						return 'UNKNOWN';
+					})();
+
 					return {
-						type: e.code,
+						type,
 						data
 					};
 				}

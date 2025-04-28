@@ -624,10 +624,26 @@ describe('Application class', () => {
 
 			// Create an instance
 			const instance = new TestApp();
-
-			instance.elysia.get('/', ({ error }) => error(500, 'Test error'));
-			await fetch('http://localhost:3000/');
 			await nextTick();
+
+			instance.elysia.get('/', ({ error }) => {
+				throw error(500, 'Test error');
+			});
+			instance.elysia.listen(3131);
+
+			const response = await instance.elysia.handle(new Request('http://localhost:3131/'));
+			await nextTick();
+
+			// Check error is parsed correctly
+			expect(response.status).toBe(500);
+			expect(response.json()).toEqual(
+				expect.resolvesTo.objectContaining({
+					type: 'INTERNAL_SERVER_ERROR',
+					data: {
+						message: 'Test error'
+					}
+				})
+			);
 
 			// Check if onError was called
 			expect(onErrorSpy).toHaveBeenCalledWith(expect.anything());
