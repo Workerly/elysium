@@ -61,7 +61,9 @@ const answers = await prompts(
 		},
 		{
 			type(_, values) {
-				const list = Array.from(new Bun.Glob(`${values.project_path}/*`).scanSync({ cwd: cwd() }));
+				const list = Array.from(
+					new Bun.Glob(`${values.project_path}/${values.project_name}/*`).scanSync({ cwd: cwd() })
+				);
 				return list.length > 0 ? 'toggle' : null;
 			},
 			name: 'override_path',
@@ -95,6 +97,18 @@ const answers = await prompts(
 			message: 'Which modules would you like to include? (separate by commas)',
 			initial: 'main',
 			separator: ','
+		},
+		{
+			type: 'multiselect',
+			name: 'plugins',
+			message: 'Which plugins would you like to include?',
+			choices: [
+				{
+					title: 'Sentry',
+					value: 'sentry',
+					description: 'Sentry tracing and error reporting (https://sentry.io)'
+				}
+			]
 		},
 		{
 			type: 'multiselect',
@@ -208,17 +222,6 @@ for (const module of answers.modules) {
 	await Bun.file(join(modulePath, `${snake(module)}.module.ts`)).write(moduleCode);
 }
 
-const appCode = getAppCode(
-	answers.project_name,
-	objectify(
-		answers.modules,
-		(m: string) => m,
-		(m: string) =>
-			answers.template === 'multi' ? `#${m}/${snake(m)}.module` : `#root/${snake(m)}.module`
-	)
-);
-await Bun.file(join(projectPath, 'src', 'app.ts')).write(appCode);
-
 const packagesJson = Bun.file(join(projectPath, 'package.json'));
 let patchedPackageJson = assign(await packagesJson.json(), {
 	imports:
@@ -235,47 +238,77 @@ s.update('Installing dependencies...');
 
 await Bun.$`cd ${projectPath} && bun install`.quiet();
 
+const enabledPlugins: { name: string; alias: string }[] = [];
+
+const setupPluginOrFeature = async (name: string, kind: 'plugin' | 'feature') => {
+	const pluginPath = join(__dirname, `${kind}-${name}`);
+	const pluginExists = await exists(pluginPath);
+
+	if (!pluginExists) {
+		s.fail(
+			`Unable to find the selected ${kind}. Please report this issue on the official GitHub repository at https://github.com/Workerly/elysium`
+		);
+	}
+
+	await cp(`${pluginPath}/`, `${projectPath}/`, {
+		recursive: true,
+		filter(source) {
+			return !source.endsWith('.specs');
+		}
+	});
+
+	const specs = await Bun.file(join(pluginPath, '.specs')).json();
+
+	if (specs.packages) {
+		const { dev, prod } = specs.packages as { dev: string[]; prod: string[] };
+
+		for (const p of dev ?? []) {
+			await Bun.$`cd ${projectPath} && bun add -D ${p}`.quiet();
+		}
+
+		for (const p of prod ?? []) {
+			await Bun.$`cd ${projectPath} && bun add ${p}`.quiet();
+		}
+	}
+
+	if (specs.patch) {
+		patchedPackageJson = assign(patchedPackageJson, specs.patch);
+	}
+
+	if (kind === 'plugin') {
+		enabledPlugins.push({ name: specs.import.name, alias: specs.import.alias });
+	}
+};
+
+if (answers.plugins.length > 0) {
+	s.update('Installing plugins...');
+
+	for (const plugin of answers.plugins) {
+		await setupPluginOrFeature(plugin, 'plugin');
+	}
+}
+
 if (answers.features.length > 0) {
 	s.update('Setting up enabled features...');
 
 	for (const feature of answers.features) {
-		const featurePath = join(__dirname, `feature-${feature}`);
-		const featureExists = await exists(featurePath);
-
-		if (!featureExists) {
-			s.fail(
-				`Unable to find the selected feature. Please report this issue on the official GitHub repository at https://github.com/Workerly/elysium`
-			);
-		}
-
-		await cp(`${featurePath}/`, `${projectPath}/`, {
-			recursive: true,
-			filter(source) {
-				return !source.endsWith('.specs');
-			}
-		});
-
-		const specs = await Bun.file(join(featurePath, '.specs')).json();
-
-		if (specs.packages) {
-			const { dev, prod } = specs.packages as { dev: string[]; prod: string[] };
-
-			for (const p of dev ?? []) {
-				await Bun.$`cd ${projectPath} && bun add -D ${p}`.quiet();
-			}
-
-			for (const p of prod ?? []) {
-				await Bun.$`cd ${projectPath} && bun add ${p}`.quiet();
-			}
-		}
-
-		if (specs.patch) {
-			patchedPackageJson = assign(patchedPackageJson, specs.patch);
-		}
+		await setupPluginOrFeature(feature, 'feature');
 	}
 }
 
 await packagesJson.write(JSON.stringify(patchedPackageJson, null, 2));
+
+const appCode = getAppCode(
+	answers.project_name,
+	objectify(
+		answers.modules,
+		(m: string) => m,
+		(m: string) =>
+			answers.template === 'multi' ? `#${m}/${snake(m)}.module` : `#root/${snake(m)}.module`
+	),
+	enabledPlugins
+);
+await Bun.file(join(projectPath, 'src', 'app.ts')).write(appCode);
 
 if (answers.features.includes('prettier')) {
 	s.update('Formatting code using Prettier...');

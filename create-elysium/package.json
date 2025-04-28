@@ -1,6 +1,6 @@
 {
 	"name": "create-elysium",
-	"version": "0.1.6",
+	"version": "0.1.7",
 	"license": "Apache-2.0",
 	"description": "A super-powered web framework built on top of Bun and Elysia.",
 	"author": {
@@ -30,7 +30,8 @@
 		"index.js",
 		"template-*/**",
 		"feature-*/**",
-		"shared-*/**"
+		"shared-*/**",
+		"plugin-*/**"
 	],
 	"type": "module",
 	"devDependencies": {

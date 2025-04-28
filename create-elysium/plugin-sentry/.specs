@@ -1,0 +1,11 @@
+{
+	"packages": {
+		"prod": [
+			"@elysiumjs/plugin-sentry"
+		]
+	},
+	"import": {
+		"name": "@elysiumjs/plugin-sentry",
+		"alias": "sentryPlugin"
+	}
+}

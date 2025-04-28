@@ -24,15 +24,18 @@ export class ${module}Module extends Module {}
 
 export const getAppCode = (
 	projectName: string,
-	modules: Record<string, string>
-) => /* js */ `import type { Route } from '@elysiumjs/core';
-import type { Elysia } from 'elysia';
+	modules: Record<string, string>,
+	plugins: { name: string; alias: string }[] = []
+) => /* js */ `import type { Elysia, Route } from '@elysiumjs/core';
 
-import { Application, WorkerPool } from '@elysiumjs/core';
+import { Application, t, WorkerPool } from '@elysiumjs/core';
+${plugins.map((plugin) => `import { plugin as ${plugin.alias} } from '${plugin.name}';`).join('\n')}
 
 ${Object.keys(modules)
 	.map((module) => `import { ${pascal(module)}Module } from '${modules[module]}';`)
 	.join('\n')}
+
+export const env = t.Object({});
 
 @Application.register({
 	modules: [${Object.keys(modules)
@@ -65,7 +68,11 @@ ${Object.keys(modules)
 				version: '1.0.0'
 			}
 		}
-	}
+	},
+	env,
+	plugins: [
+		${plugins.map((plugin) => `${plugin.alias}()`).join(',\n\t\t')}
+	]
 })
 export class App extends Application {
 	protected async onStart(e: Elysia<Route>) {
