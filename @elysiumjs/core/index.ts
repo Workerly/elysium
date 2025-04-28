@@ -14,6 +14,7 @@
 
 import './macros';
 
+export { type Elysia, t } from 'elysia';
 export { type AppContext, type ElysiumPlugin, Application } from './src/app';
 export { Cache } from './src/cache';
 export {
