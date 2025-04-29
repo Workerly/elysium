@@ -203,7 +203,7 @@ describe('Repository', () => {
 
 	describe('Table handling', () => {
 		it('should return the regular table if tenancy is not supported', () => {
-			const table = TestRepository.table;
+			const table = TestRepository.Model.table;
 			expect(getTableConfig(table).name).toBe(TestModel.tableName);
 		});
 
@@ -221,7 +221,7 @@ describe('Repository', () => {
 			// Create a repository with tenancy support
 			class TenantRepository extends Repository(TenantModel) {}
 
-			const _table = TenantRepository.table;
+			const _table = TenantRepository.Model.table;
 
 			expect(getCurrentTenantSpy).toHaveBeenCalled();
 			expect(withTenantSpy).toHaveBeenLastCalledWith('test-tenant', TenantModel);
@@ -242,7 +242,7 @@ describe('Repository', () => {
 
 			expect(mockDbConnection.select).toHaveBeenCalled();
 			// @ts-expect-error Mocking headaches
-			expect(mockDbConnection.from).toHaveBeenCalledWith(TestRepository.table);
+			expect(mockDbConnection.from).toHaveBeenCalledWith(TestRepository.Model.table);
 			expect(result).toEqual([mockRecord]);
 		});
 
@@ -251,9 +251,9 @@ describe('Repository', () => {
 
 			expect(mockTxConnection.select).toHaveBeenCalled();
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.from).toHaveBeenCalledWith(TestRepository.table);
+			expect(mockTxConnection.from).toHaveBeenCalledWith(TestRepository.Model.table);
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestRepository.table.id, '1'));
+			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestModel.table.id, '1'));
 			expect(result).toEqual(mockRecord);
 		});
 
@@ -262,9 +262,9 @@ describe('Repository', () => {
 
 			expect(mockTxConnection.select).toHaveBeenCalled();
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.from).toHaveBeenCalledWith(TestRepository.table);
+			expect(mockTxConnection.from).toHaveBeenCalledWith(TestRepository.Model.table);
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestRepository.table.id, '999'));
+			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestModel.table.id, '999'));
 			expect(result).not.toEqual({ id: '999', name: 'Test' });
 		});
 
@@ -288,7 +288,7 @@ describe('Repository', () => {
 			// @ts-expect-error Mocking headaches
 			expect(mockTxConnection.set).toHaveBeenCalledWith(data);
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestRepository.table.id, '1'));
+			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestModel.table.id, '1'));
 			// @ts-expect-error Mocking headaches
 			expect(mockTxConnection.returning).toHaveBeenCalled();
 			expect(result).toEqual(mockRecord);
@@ -312,7 +312,7 @@ describe('Repository', () => {
 
 			expect(mockTxConnection.delete).toHaveBeenCalled();
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestRepository.table.id, '1'));
+			expect(mockTxConnection.where).toHaveBeenCalledWith(eq(TestModel.table.id, '1'));
 			// @ts-expect-error Mocking headaches
 			expect(mockTxConnection.returning).toHaveBeenCalled();
 			expect(result).toEqual(mockRecord);
@@ -336,7 +336,7 @@ describe('Repository', () => {
 			expect(Application.context.getStore).toHaveBeenCalled();
 			expect(mockTxConnection.select).toHaveBeenCalled();
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.from).toHaveBeenCalledWith(TestRepository.table);
+			expect(mockTxConnection.from).toHaveBeenCalledWith(TestModel.table);
 		});
 
 		it('should fall back to the regular connection if no transaction is available', async () => {
@@ -353,7 +353,7 @@ describe('Repository', () => {
 			expect(getConnectionSpy).toHaveBeenCalledWith('default');
 			expect(mockDbConnection.select).toHaveBeenCalled();
 			// @ts-expect-error Mocking headaches
-			expect(mockDbConnection.from).toHaveBeenCalledWith(TestRepository.table);
+			expect(mockDbConnection.from).toHaveBeenCalledWith(TestModel.table);
 		});
 	});
 
@@ -379,7 +379,7 @@ describe('Repository', () => {
 			expect(withTenantSpy).toHaveBeenCalledWith('test-tenant', TenantModel);
 			expect(mockTxConnection.select).toHaveBeenCalled();
 			// @ts-expect-error Mocking headaches
-			expect(mockTxConnection.from).toHaveBeenCalledWith(TenantRepository.table);
+			expect(mockTxConnection.from).toHaveBeenCalledWith(TenantRepository.Model.table);
 		});
 
 		it('should use the public schema if no tenant is set', async () => {

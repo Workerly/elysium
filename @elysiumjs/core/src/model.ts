@@ -120,6 +120,12 @@ export type ModelClass<
 	readonly $inferUpdate: Partial<TTable['$inferSelect']>;
 
 	/**
+	 * The drizzle's table schema wrapped by this model.
+	 * Will be automatically wrapped by the `Tenancy.withTenant()` function when the current tenant is not `public`.
+	 */
+	readonly table: TTable;
+
+	/**
 	 * The name of the table wrapped by the model.
 	 */
 	readonly tableName: string;
@@ -188,6 +194,24 @@ export const Model = <TColumnsMap extends Record<string, PgColumnBuilderBase>>(
 		 * The data type needed by the update queries.
 		 */
 		public static readonly $inferUpdate: Partial<typeof table.$inferInsert> = table.$inferInsert;
+
+		/**
+		 * The drizzle's table schema wrapped by this model.
+		 */
+		public static get table(): ReturnType<typeof pgTable<string, TColumnsMap>> {
+			// If we are not inside an Application context, we can't use the tenancy system
+			if (!Application.instance || !Application.context.getStore) {
+				return table;
+			}
+
+			if (this.supportTenancy) {
+				const tenant = Tenancy.getCurrentTenant() ?? 'public';
+				// @ts-expect-error typeof this strangely doesn't match the ModelClass type
+				return Tenancy.withTenant(tenant, this);
+			}
+
+			return table;
+		}
 
 		/**
 		 * The name of the table wrapped by the model.

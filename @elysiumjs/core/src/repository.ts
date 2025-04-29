@@ -24,7 +24,6 @@ import { pgTable } from 'drizzle-orm/pg-core';
 
 import { Application } from './app';
 import { Database } from './database';
-import { Tenancy } from './model';
 
 /**
  * Database's primary column type.
@@ -179,23 +178,11 @@ export const Repository = <
 		}
 
 		/**
-		 * The drizzle's table schema wrapped by this repository.
-		 */
-		public static get table(): ReturnType<typeof pgTable<string, TColumnsMap>> {
-			if (model.supportTenancy) {
-				const tenant = Tenancy.getCurrentTenant() ?? 'public';
-				return Tenancy.withTenant(tenant, model);
-			}
-
-			return table;
-		}
-
-		/**
 		 * Retrieves all the records in the database.
 		 * @returns All the records in the database.
 		 */
 		public async all(): Promise<TSelect[]> {
-			return await this.db.select().from(R.table);
+			return await this.db.select().from(model.table);
 		}
 
 		/**
@@ -204,7 +191,7 @@ export const Repository = <
 		 * @returns The record with the given id.
 		 */
 		public async find(id: TId): Promise<TSelect | null> {
-			const [row] = await this.db.select().from(R.table).where(eq(R.table.id, id));
+			const [row] = await this.db.select().from(model.table).where(eq(model.table.id, id));
 			return (row ?? null) as TSelect | null;
 		}
 
@@ -214,7 +201,7 @@ export const Repository = <
 		 * @returns The inserted record.
 		 */
 		public async insert(data: TInsert): Promise<TSelect> {
-			const [row] = await this.db.insert(R.table).values(data).returning();
+			const [row] = await this.db.insert(model.table).values(data).returning();
 			return row as TSelect;
 		}
 
@@ -225,7 +212,11 @@ export const Repository = <
 		 * @returns The updated record.
 		 */
 		public async update(id: TId, data: TUpdate): Promise<TSelect> {
-			const [row] = await this.db.update(R.table).set(data).where(eq(R.table.id, id)).returning();
+			const [row] = await this.db
+				.update(model.table)
+				.set(data)
+				.where(eq(model.table.id, id))
+				.returning();
 			return row as TSelect;
 		}
 
@@ -235,7 +226,7 @@ export const Repository = <
 		 * @returns The updated records.
 		 */
 		public async updateAll(data: TUpdate): Promise<TSelect[]> {
-			return await this.db.update(R.table).set(data).returning();
+			return await this.db.update(model.table).set(data).returning();
 		}
 
 		/**
@@ -244,7 +235,7 @@ export const Repository = <
 		 * @returns The deleted record.
 		 */
 		public async delete(id: TId): Promise<TSelect> {
-			const [row] = await this.db.delete(R.table).where(eq(R.table.id, id)).returning();
+			const [row] = await this.db.delete(model.table).where(eq(model.table.id, id)).returning();
 			return row as TSelect;
 		}
 
@@ -253,7 +244,7 @@ export const Repository = <
 		 * @returns All the records in the database.
 		 */
 		public async deleteAll(): Promise<TSelect[]> {
-			return await this.db.delete(R.table).returning();
+			return await this.db.delete(model.table).returning();
 		}
 	}
 
