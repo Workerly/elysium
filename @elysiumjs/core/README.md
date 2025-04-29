@@ -109,4 +109,4 @@ Feel free to open issues for any bugs or questions you may have. Pull requests a
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for more information.
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](../../LICENSE) file for more information.

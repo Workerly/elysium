@@ -33,4 +33,4 @@ This plugin forwards all options to the Sentry initialization method. You can fi
 
 ## License
 
-This project is licensed under the terms of the [Apache License 2.0](LICENSE).
+This project is licensed under the terms of the [Apache License 2.0](../../LICENSE).
