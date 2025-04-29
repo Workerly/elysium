@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export * from './command.maker';
-export * from './controller.maker';
-export * from './job.maker';
-export * from './middleware.maker';
-export * from './model.maker';
-export * from './repository.maker';
-export * from './service.maker';
-export * from './validator.maker';
+export * from './make_command';
+export * from './make_controller';
+export * from './make_job';
+export * from './make_middleware';
+export * from './make_model';
+export * from './make_repository';
+export * from './make_service';
+export * from './make_validator';
+
+export * from './migration_generate';
+export * from './migration_run';

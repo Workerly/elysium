@@ -18,49 +18,34 @@ import { join } from 'node:path';
 
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { pascal, snake, trim } from 'radash';
+import { snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker command for creating Elysium models.
+ * Maker class for creating Elysium middlewares.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class ModelMaker extends Command {
-	public static readonly command: string = 'make:model';
-	public static readonly description: string = 'Creates a new model.';
+export class MakeMiddlewareCommand extends Command {
+	public static readonly command: string = 'make:middleware';
+	public static readonly description: string = 'Creates a new middleware.';
 
 	@Command.arg({
-		description: 'The name of the model to create',
+		description: 'The name of the middleware to create',
 		type: CommandArgumentType.STRING
 	})
-	protected name?: string;
+	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the model will be created',
+		description: 'The module where the middleware will be created',
 		type: CommandArgumentType.STRING
 	})
-	protected module?: string;
-
-	@Command.arg({
-		name: 'table',
-		description: 'The name of the table wrapped by the model',
-		type: CommandArgumentType.STRING
-	})
-	private tableName?: string;
-
-	@Command.arg({
-		name: 'support-tenancy',
-		description: 'Support tenancy',
-		type: CommandArgumentType.BOOLEAN,
-		default: false
-	})
-	private supportTenancy: boolean = false;
+	private module?: string;
 
 	public async run(): Promise<void> {
-		if (!this.name || !this.tableName) {
+		if (!this.name) {
 			return this.setup();
 		}
 
@@ -68,9 +53,7 @@ export class ModelMaker extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
-			table: this.tableName,
-			name: this.name,
-			supportTenancy: this.supportTenancy
+			name: this.name
 		};
 
 		if (!answers.module && !config.mono) {
@@ -86,12 +69,6 @@ export class ModelMaker extends Command {
 
 			answers.module = module.module;
 		}
-
-		if (!answers.name) {
-			answers.name = trim(pascal(answers.table), 's');
-		}
-
-		answers.canonicalName = answers.name;
 
 		return this.build(answers);
 	}
@@ -115,48 +92,16 @@ export class ModelMaker extends Command {
 			},
 			{
 				type: 'text',
-				name: 'table',
-				message: 'Table Name:',
-				initial: 'users',
-				validate(value: string) {
-					if (value.length < 1) {
-						return 'Table name cannot be empty';
-					}
-
-					return true;
-				}
-			},
-			{
-				type: 'text',
 				name: 'name',
-				message: 'Model Name:',
-				initial(_, values) {
-					return trim(pascal(values.table), 's');
-				},
+				message: 'Middleware Name:',
+				initial: 'AuthMiddleware',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Model name cannot be empty';
+						return 'Middleware name cannot be empty';
 					}
 
 					return true;
 				}
-			},
-			{
-				type: 'select',
-				name: 'supportTenancy',
-				message: 'Support Tenancy:',
-				choices: [
-					{
-						title: 'Yes',
-						value: true,
-						description: 'The model supports multi-tenancy.'
-					},
-					{
-						title: 'No',
-						value: false,
-						description: 'The model does not support multi-tenancy.'
-					}
-				]
 			}
 		];
 
@@ -171,14 +116,12 @@ export class ModelMaker extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Model')) {
-			answers.name += 'Model';
+		if (!answers.name.endsWith('Middleware')) {
+			answers.name += 'Middleware';
 		}
 
-		answers.canonicalName = answers.name.replace('Model', '');
-
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/model.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/middleware.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -186,10 +129,10 @@ export class ModelMaker extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Model', ''));
-		const file = Bun.file(`${path}/models/${name}.model.ts`);
+		const name = snake(answers.name.replace('Middleware', ''));
+		const file = Bun.file(`${path}/middlewares/${name}.middleware.ts`);
 		await file.write(stub);
 
-		this.success(`Model ${this.bold(file.name!)} created successfully.`);
+		this.success(`Middleware ${this.bold(file.name!)} created successfully.`);
 	}
 }

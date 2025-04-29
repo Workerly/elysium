@@ -13,28 +13,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import {
-	CommandMaker,
-	ControllerMaker,
-	JobMaker,
-	MiddlewareMaker,
-	ModelMaker,
-	RepositoryMaker,
-	ServiceMaker,
-	ValidatorMaker
+	MakeCommandCommand,
+	MakeControllerCommand,
+	MakeJobCommand,
+	MakeMiddlewareCommand,
+	MakeModelCommand,
+	MakeRepositoryCommand,
+	MakeServiceCommand,
+	MakeValidatorCommand,
+	MigrationGenerateCommand,
+	MigrationRunCommand
 } from './src/commands';
 
 const { App } = await import(`${process.cwd()}/src/app`);
 
 @App.register({
 	commands: [
-		CommandMaker,
-		ControllerMaker,
-		JobMaker,
-		MiddlewareMaker,
-		ModelMaker,
-		RepositoryMaker,
-		ServiceMaker,
-		ValidatorMaker
+		MakeCommandCommand,
+		MakeControllerCommand,
+		MakeJobCommand,
+		MakeMiddlewareCommand,
+		MakeModelCommand,
+		MakeRepositoryCommand,
+		MakeServiceCommand,
+		MakeValidatorCommand,
+		MigrationGenerateCommand,
+		MigrationRunCommand
 	]
 })
 class StyxApp extends App {}

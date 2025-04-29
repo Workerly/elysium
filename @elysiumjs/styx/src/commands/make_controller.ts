@@ -28,7 +28,7 @@ import { getRootPath } from '../utils';
  * Maker class for creating Elysium controllers.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class ControllerMaker extends Command {
+export class MakeControllerCommand extends Command {
 	public static readonly command: string = 'make:controller';
 	public static readonly description: string = 'Creates a new controller.';
 
@@ -36,13 +36,13 @@ export class ControllerMaker extends Command {
 		description: 'The name of the controller to create',
 		type: CommandArgumentType.STRING
 	})
-	protected name?: string;
+	private name?: string;
 
 	@Command.arg({
 		description: 'The module where the controller will be created',
 		type: CommandArgumentType.STRING
 	})
-	protected module?: string;
+	private module?: string;
 
 	@Command.arg({
 		description: 'Whether to create a HTTP controller',

@@ -28,7 +28,7 @@ import { getRootPath } from '../utils';
  * Maker command for creating Elysium repositories.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class RepositoryMaker extends Command {
+export class MakeRepositoryCommand extends Command {
 	public static readonly command: string = 'make:repository';
 	public static readonly description: string = 'Creates a new repository.';
 
@@ -36,13 +36,13 @@ export class RepositoryMaker extends Command {
 		description: 'The name of the repository to create',
 		type: CommandArgumentType.STRING
 	})
-	protected name?: string;
+	private name?: string;
 
 	@Command.arg({
 		description: 'The module where the repository will be created',
 		type: CommandArgumentType.STRING
 	})
-	protected module?: string;
+	private module?: string;
 
 	@Command.arg({
 		description: 'The alias of the repository to create',
@@ -205,7 +205,7 @@ export class RepositoryMaker extends Command {
 		const stub = formatter(await stubFile.text(), {
 			...answers,
 			module: answers.module ?? 'root',
-			model_name: answers.model.replace('Model', '').toLowerCase()
+			model_name: snake(answers.model.replace('Model', ''))
 		});
 
 		const path = answers.module ? await getModulePath(answers.module) : './src';

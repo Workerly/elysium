@@ -25,24 +25,44 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker command for creating Elysium validators.
+ * Maker command for creating Elysium services.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class ValidatorMaker extends Command {
-	public static readonly command: string = 'make:validator';
-	public static readonly description: string = 'Creates a new validator.';
+export class MakeServiceCommand extends Command {
+	public static readonly command: string = 'make:service';
+	public static readonly description: string = 'Creates a new service.';
 
 	@Command.arg({
-		description: 'The name of the validator to create',
+		description: 'The name of the service to create',
 		type: CommandArgumentType.STRING
 	})
-	protected name?: string;
+	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the validator will be created',
+		description: 'The module where the service will be created',
 		type: CommandArgumentType.STRING
 	})
-	protected module?: string;
+	private module?: string;
+
+	@Command.arg({
+		description: 'The alias of the service to create',
+		type: CommandArgumentType.STRING
+	})
+	private alias?: string;
+
+	@Command.arg({
+		description: 'Create a factory service',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private factory: boolean = false;
+
+	@Command.arg({
+		description: 'Create a singleton service',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private singleton: boolean = false;
 
 	public async run(): Promise<void> {
 		if (!this.name) {
@@ -53,7 +73,9 @@ export class ValidatorMaker extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
-			name: this.name
+			name: this.name,
+			alias: this.alias,
+			scope: this.factory ? 'FACTORY' : this.singleton ? 'SINGLETON' : 'SINGLETON'
 		};
 
 		if (!answers.module && !config.mono) {
@@ -93,15 +115,47 @@ export class ValidatorMaker extends Command {
 			{
 				type: 'text',
 				name: 'name',
-				message: 'Validator Name:',
-				initial: 'LoginValidator',
+				message: 'Service Name:',
+				initial: 'UserService',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Validator name cannot be empty';
+						return 'Service name cannot be empty';
 					}
 
 					return true;
 				}
+			},
+			{
+				type: 'text',
+				name: 'alias',
+				message: 'Service Alias:',
+				initial(_, values) {
+					return values.name;
+				},
+				validate(value: string) {
+					if (value.length < 1) {
+						return 'Service alias cannot be empty';
+					}
+
+					return true;
+				}
+			},
+			{
+				type: 'select',
+				name: 'scope',
+				message: 'Service Scope:',
+				choices: [
+					{
+						title: 'SINGLETON',
+						value: 'SINGLETON',
+						description: 'A single instance of the service is created.'
+					},
+					{
+						title: 'FACTORY',
+						value: 'FACTORY',
+						description: 'A new instance of the service is created each time it is injected.'
+					}
+				]
 			}
 		];
 
@@ -116,16 +170,16 @@ export class ValidatorMaker extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Validator')) {
-			answers.name += 'Validator';
+		if (!answers.name.endsWith('Service')) {
+			answers.name += 'Service';
 		}
 
-		if (!answers.request_name) {
-			answers.request_name = answers.name.replace('Validator', 'Request');
+		if (!answers.alias) {
+			answers.alias = answers.name;
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/validator.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/service.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -133,10 +187,10 @@ export class ValidatorMaker extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Validator', ''));
-		const file = Bun.file(`${path}/validators/${name}.validator.ts`);
+		const name = snake(answers.name.replace('Service', ''));
+		const file = Bun.file(`${path}/services/${name}.service.ts`);
 		await file.write(stub);
 
-		this.success(`Validator ${this.bold(file.name!)} created successfully.`);
+		this.success(`Service ${this.bold(file.name!)} created successfully.`);
 	}
 }

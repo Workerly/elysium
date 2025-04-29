@@ -14,50 +14,53 @@
 
 import type { PromptObject } from 'prompts';
 
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { pascal, snake } from 'radash';
+import { pascal, snake, trim } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker class for creating Elysium commands.
+ * Maker command for creating Elysium models.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class CommandMaker extends Command {
-	public static readonly command: string = 'make:command';
-	public static readonly description: string = 'Creates a new command.';
+export class MakeModelCommand extends Command {
+	public static readonly command: string = 'make:model';
+	public static readonly description: string = 'Creates a new model.';
 
 	@Command.arg({
-		description: 'The name of the command to create',
+		description: 'The name of the model to create',
 		type: CommandArgumentType.STRING
 	})
-	protected name?: string;
+	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the command will be created',
+		description: 'The module where the model will be created',
 		type: CommandArgumentType.STRING
 	})
-	protected module?: string;
+	private module?: string;
 
 	@Command.arg({
-		description: 'The command to create',
+		name: 'table',
+		description: 'The name of the table wrapped by the model',
 		type: CommandArgumentType.STRING
 	})
-	private command?: string;
+	private tableName?: string;
 
 	@Command.arg({
-		description: 'The description of the command',
-		type: CommandArgumentType.STRING
+		name: 'support-tenancy',
+		description: 'Support tenancy',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
 	})
-	private description?: string;
+	private supportTenancy: boolean = false;
 
 	public async run(): Promise<void> {
-		if (!this.command || !this.name) {
+		if (!this.name || !this.tableName) {
 			return this.setup();
 		}
 
@@ -65,9 +68,9 @@ export class CommandMaker extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
+			table: this.tableName,
 			name: this.name,
-			command: this.command,
-			description: this.description
+			supportTenancy: this.supportTenancy
 		};
 
 		if (!answers.module && !config.mono) {
@@ -83,6 +86,12 @@ export class CommandMaker extends Command {
 
 			answers.module = module.module;
 		}
+
+		if (!answers.name) {
+			answers.name = trim(pascal(answers.table), 's');
+		}
+
+		answers.canonicalName = answers.name;
 
 		return this.build(answers);
 	}
@@ -106,12 +115,12 @@ export class CommandMaker extends Command {
 			},
 			{
 				type: 'text',
-				name: 'command',
-				message: 'Command Name:',
-				initial: 'user:say',
+				name: 'table',
+				message: 'Table Name:',
+				initial: 'users',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Command name cannot be empty';
+						return 'Table name cannot be empty';
 					}
 
 					return true;
@@ -119,22 +128,39 @@ export class CommandMaker extends Command {
 			},
 			{
 				type: 'text',
-				name: 'description',
-				message: 'Command Description:',
-				initial: 'Say something',
+				name: 'name',
+				message: 'Model Name:',
+				initial(_, values) {
+					return trim(pascal(values.table), 's');
+				},
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Command description cannot be empty';
+						return 'Model name cannot be empty';
 					}
 
 					return true;
 				}
+			},
+			{
+				type: 'select',
+				name: 'supportTenancy',
+				message: 'Support Tenancy:',
+				choices: [
+					{
+						title: 'Yes',
+						value: true,
+						description: 'The model supports multi-tenancy.'
+					},
+					{
+						title: 'No',
+						value: false,
+						description: 'The model does not support multi-tenancy.'
+					}
+				]
 			}
 		];
 
 		const answers = await prompts(items);
-
-		answers.name = pascal(answers.command.replaceAll(':', '_'));
 
 		return this.build(answers);
 	}
@@ -145,12 +171,14 @@ export class CommandMaker extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Command')) {
-			answers.name += 'Command';
+		if (!answers.name.endsWith('Model')) {
+			answers.name += 'Model';
 		}
 
+		answers.canonicalName = answers.name.replace('Model', '');
+
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/command.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/model.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -158,10 +186,10 @@ export class CommandMaker extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Command', ''));
-		const file = Bun.file(`${path}/commands/${name}.command.ts`);
+		const name = snake(answers.name.replace('Model', ''));
+		const file = Bun.file(`${path}/models/${name}.model.ts`);
 		await file.write(stub);
 
-		this.success(`Command ${this.bold(file.name!)} created successfully.`);
+		this.success(`Model ${this.bold(file.name!)} created successfully.`);
 	}
 }

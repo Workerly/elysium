@@ -25,24 +25,37 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker class for creating Elysium middlewares.
+ * Maker class for creating Elysium jobs.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MiddlewareMaker extends Command {
-	public static readonly command: string = 'make:middleware';
-	public static readonly description: string = 'Creates a new middleware.';
+export class MakeJobCommand extends Command {
+	public static readonly command: string = 'make:job';
+	public static readonly description: string = 'Creates a new job.';
 
 	@Command.arg({
-		description: 'The name of the middleware to create',
+		description: 'The name of the job to create',
 		type: CommandArgumentType.STRING
 	})
-	protected name?: string;
+	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the middleware will be created',
+		description: 'The module where the job will be created',
 		type: CommandArgumentType.STRING
 	})
-	protected module?: string;
+	private module?: string;
+
+	@Command.arg({
+		description: 'The alias of the job to create',
+		type: CommandArgumentType.STRING
+	})
+	private alias?: string;
+
+	@Command.arg({
+		description: 'The name of the queue where the job will be dispatched',
+		type: CommandArgumentType.STRING,
+		default: 'default'
+	})
+	private queue: string = 'default';
 
 	public async run(): Promise<void> {
 		if (!this.name) {
@@ -53,7 +66,9 @@ export class MiddlewareMaker extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
-			name: this.name
+			name: this.name,
+			alias: this.alias,
+			queue: this.queue ?? 'default'
 		};
 
 		if (!answers.module && !config.mono) {
@@ -93,15 +108,36 @@ export class MiddlewareMaker extends Command {
 			{
 				type: 'text',
 				name: 'name',
-				message: 'Middleware Name:',
-				initial: 'AuthMiddleware',
+				message: 'Job Name:',
+				initial: 'SendEmailJob',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Middleware name cannot be empty';
+						return 'Job name cannot be empty';
 					}
 
 					return true;
 				}
+			},
+			{
+				type: 'text',
+				name: 'alias',
+				message: 'Job Alias:',
+				initial(_, values) {
+					return values.name;
+				},
+				validate(value: string) {
+					if (value.length < 1) {
+						return 'Job alias cannot be empty';
+					}
+
+					return true;
+				}
+			},
+			{
+				type: 'text',
+				name: 'queue',
+				message: 'Job Queue:',
+				initial: 'default'
 			}
 		];
 
@@ -116,12 +152,16 @@ export class MiddlewareMaker extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Middleware')) {
-			answers.name += 'Middleware';
+		if (!answers.name.endsWith('Job')) {
+			answers.name += 'Job';
+		}
+
+		if (!answers.alias) {
+			answers.alias = answers.name;
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/middleware.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/job.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -129,10 +169,10 @@ export class MiddlewareMaker extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Middleware', ''));
-		const file = Bun.file(`${path}/middlewares/${name}.middleware.ts`);
+		const name = snake(answers.name.replace('Job', ''));
+		const file = Bun.file(`${path}/jobs/${name}.job.ts`);
 		await file.write(stub);
 
-		this.success(`Middleware ${this.bold(file.name!)} created successfully.`);
+		this.success(`Job ${this.bold(file.name!)} created successfully.`);
 	}
 }
