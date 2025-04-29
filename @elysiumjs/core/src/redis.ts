@@ -26,7 +26,7 @@ import { Service } from './service';
  * Properties used to create a new redis connection.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type RedisConnectionProps = Bun.RedisOptions;
+export type RedisConnectionProps = Bun.RedisOptions & { url: string };
 
 /**
  * Keyv adapter for redis. This adapter is based on the Bun's Redis client.
