@@ -108,12 +108,17 @@ const mockStore = new Map<string, any>([
 	['db:tx', mockTxConnection]
 ]);
 
+const mockContext = {
+	getStore: mock(() => mockStore)
+};
+
 mock.module('../src/app', () => ({
 	Application: {
 		...Application,
-		context: {
-			getStore: mock(() => mockStore)
-		}
+		instance: {
+			_appContextStorage: mockContext
+		},
+		context: mockContext
 	}
 }));
 

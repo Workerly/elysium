@@ -361,7 +361,7 @@ export namespace Redis {
 	 * @param config The configuration for the redis connection.
 	 * @returns The newly created and registered redis connection.
 	 */
-	export const registerConnection = (name: string, config: Bun.RedisOptions) => {
+	export const registerConnection = (name: string, config: RedisConnectionProps) => {
 		if (Service.exists(getConnectionName(name))) {
 			// TODO: Use logger service here
 			console.error(`A connection with the name ${name} has already been registered.`);
