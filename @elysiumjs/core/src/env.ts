@@ -32,10 +32,14 @@ export namespace Env {
 	 * Gets the value of an environment variable.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param name The name of the environment variable.
+	 * @param defaultValue The default value to return if the environment variable is not set.
 	 * @returns The value of the environment variable.
 	 */
-	export const get = <TKey extends keyof AppEnv>(name: TKey): AppEnv[TKey] => {
-		return env.get(name) as AppEnv[TKey];
+	export const get = <TKey extends keyof AppEnv>(
+		name: TKey,
+		defaultValue?: AppEnv[TKey]
+	): AppEnv[TKey] => {
+		return (env.get(name) ?? defaultValue) as AppEnv[TKey];
 	};
 
 	/**
