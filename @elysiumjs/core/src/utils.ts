@@ -17,25 +17,27 @@ import type { Elysia } from 'elysia';
 import { isObject, isPrimitive } from 'radash';
 
 export namespace Symbols {
-	export const app = Symbol('app');
+	export const app = Symbol('elysium:Application');
 
-	export const controller = Symbol('controller');
+	export const controller = Symbol('elysium:Controller');
 
-	export const middlewares = Symbol('middlewares');
+	export const middlewares = Symbol('elysium:MiddlewaresList');
 
-	export const services = Symbol('services');
+	export const services = Symbol('elysium:ServicesList');
 
-	export const websocket = Symbol('websocket');
+	export const websocket = Symbol('elysium:WebSocket');
 
-	export const wamp = Symbol('wamp');
+	export const wamp = Symbol('elysium:Wamp');
 
-	export const http = Symbol('http');
+	export const http = Symbol('elysium:Http');
 
-	export const job = Symbol('job');
+	export const job = Symbol('elysium:Job');
 
-	export const arg = Symbol('command:arguments');
+	export const arg = Symbol('elysium:CommandArguments');
 
-	export const elysiaPlugin = Symbol('elysia:plugin');
+	export const elysiaPlugin = Symbol('elysium:ElysiaPlugin');
+
+	export const middlewareGuards = Symbol('elysium:MiddlewareGuards');
 }
 
 export const nextTick = () => new Promise((resolve) => process.nextTick(resolve));

@@ -141,6 +141,83 @@ describe('Middleware', () => {
 		});
 	});
 
+	describe('Middleware.guards', () => {
+		it('should correctly apply guards to a middleware class', () => {
+			// Create a test middleware class
+			class TestGuardedMiddleware extends M.Middleware {}
+
+			// Apply guards to the middleware class
+			const guards = ['auth', 'admin'];
+			const GuardedMiddleware = M.Middleware.guards.call(TestGuardedMiddleware, guards);
+
+			// Create an instance of the guarded middleware
+			const middleware = new GuardedMiddleware();
+
+			// Check if the guards were correctly applied
+			expect(middleware.guards).toBeDefined();
+			expect(middleware.guards).toBeArrayOfSize(2);
+			expect(middleware.guards).toEqual(guards);
+
+			// Verify that the guarded middleware extends the original one
+			expect(middleware).toBeInstanceOf(TestGuardedMiddleware);
+
+			// Verify the metadata was set correctly
+			const metadataGuards = Reflect.getMetadata(Symbols.middlewareGuards, middleware.constructor);
+			expect(metadataGuards).toEqual(guards);
+		});
+
+		it('should return an empty array when no guards are defined for a middleware', () => {
+			// Create a middleware instance without defined guards
+			class PlainMiddleware extends M.Middleware {}
+			const middleware = new PlainMiddleware();
+
+			// Check if guards returns an empty array when no guards are defined
+			expect(middleware.guards).toBeDefined();
+			expect(middleware.guards).toBeArrayOfSize(0);
+			expect(middleware.guards).toEqual([]);
+
+			// Verify that metadata for middleware guards doesn't exist
+			const metadataGuards = Reflect.getMetadata(Symbols.middlewareGuards, middleware.constructor);
+			expect(metadataGuards).toBeUndefined();
+		});
+
+		it('should properly inherit guards from parent middleware class', () => {
+			// Create a base middleware class with guards
+			class BaseMiddleware extends M.Middleware {}
+			const baseGuards = ['auth', 'user'];
+			const GuardedBaseMiddleware = M.Middleware.guards.call(BaseMiddleware, baseGuards);
+
+			// Create a child middleware that extends the guarded base middleware
+			class ChildMiddleware extends GuardedBaseMiddleware {}
+
+			// Create another middleware with additional guards
+			const childGuards = ['admin'];
+			const GuardedChildMiddleware = M.Middleware.guards.call(ChildMiddleware, childGuards);
+
+			// Create instances
+			const baseMiddleware = new GuardedBaseMiddleware();
+			const childMiddleware = new ChildMiddleware();
+			const guardedChildMiddleware = new GuardedChildMiddleware();
+
+			// Verify base middleware has the correct guards
+			expect(baseMiddleware.guards).toEqual(baseGuards);
+
+			// Verify child middleware inherits guards from parent
+			expect(childMiddleware.guards).toEqual(baseGuards);
+
+			// Verify that applying additional guards overwrites the inherited ones
+			expect(guardedChildMiddleware.guards).toEqual(childGuards);
+
+			// Verify the inheritance chain is maintained
+			expect(baseMiddleware).toBeInstanceOf(BaseMiddleware);
+			expect(childMiddleware).toBeInstanceOf(BaseMiddleware);
+			expect(childMiddleware).toBeInstanceOf(GuardedBaseMiddleware);
+			expect(guardedChildMiddleware).toBeInstanceOf(ChildMiddleware);
+			expect(guardedChildMiddleware).toBeInstanceOf(GuardedBaseMiddleware);
+			expect(guardedChildMiddleware).toBeInstanceOf(BaseMiddleware);
+		});
+	});
+
 	describe('executeMiddlewareChain', () => {
 		it('should execute each middleware in the chain', async () => {
 			// Create middleware instances

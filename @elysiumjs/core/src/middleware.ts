@@ -30,7 +30,7 @@ import { Symbols } from './utils';
 export const executeMiddlewareChain = (
 	middlewares: Middleware[],
 	context: any,
-	method: keyof Middleware
+	method: Exclude<keyof Middleware, 'guards'>
 ): Promise<any> => {
 	return Application.context.run(
 		new Map([
@@ -100,6 +100,25 @@ export abstract class Middleware {
 				Reflect.defineMetadata(Symbols.middlewares, m, target, propertyKey!);
 			}
 		};
+	}
+
+	/**
+	 * Creates a guarded version of the middleware.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param guards The list of guards for the middleware.
+	 * @returns A middleware class decorated with guards.
+	 */
+	public static guards(guards: string[]): Class<Middleware> {
+		class GuardedMiddleware extends this {}
+		Reflect.defineMetadata(Symbols.middlewareGuards, guards, GuardedMiddleware);
+		return GuardedMiddleware;
+	}
+
+	/**
+	 * Gets the list of guards for the middleware.
+	 */
+	public get guards(): string[] {
+		return Reflect.getMetadata(Symbols.middlewareGuards, this.constructor) ?? [];
 	}
 
 	/**
