@@ -1,0 +1,18 @@
+{
+	"name": "@elysiumjs/hermes",
+	"version": "0.1.1",
+	"module": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@ianvs/prettier-plugin-sort-imports": "^4.4.1",
+		"@types/bun": "latest",
+		"type-fest": "^4.40.1"
+	},
+	"peerDependencies": {
+		"@elysiumjs/core": "latest",
+		"typescript": "^5.8.3"
+	},
+	"dependencies": {
+		"pino": "^9.6.0"
+	}
+}
