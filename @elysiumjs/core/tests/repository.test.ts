@@ -216,7 +216,7 @@ describe('Repository', () => {
 			const getCurrentTenantSpy = spyOn(Tenancy, 'getCurrentTenant').mockReturnValueOnce(
 				'test-tenant'
 			);
-			const withTenantSpy = spyOn(Tenancy, 'withTenant');
+			const withTenantSpy = spyOn(Tenancy, 'wrapTenant');
 
 			// Create a model with tenancy support
 			class TenantModel extends TestModel {

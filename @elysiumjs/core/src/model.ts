@@ -101,6 +101,7 @@ const parseTypes = (element: PgColumn) => {
  * @template TTable The drizzle's table schema wrapped by the repository.
  */
 export type ModelClass<
+	TTableName extends string,
 	TColumnsMap extends Record<string, PgColumnBuilderBase>,
 	TTable extends PgTable = ReturnType<typeof pgTable<string, TColumnsMap>>
 > = {
@@ -128,7 +129,7 @@ export type ModelClass<
 	/**
 	 * The name of the table wrapped by the model.
 	 */
-	readonly tableName: string;
+	readonly tableName: TTableName;
 
 	/**
 	 * The table columns configuration.
@@ -173,8 +174,11 @@ export type ModelClass<
  * @param tableName The name of the table.
  * @param columns The table columns configuration.
  */
-export const Model = <TColumnsMap extends Record<string, PgColumnBuilderBase>>(
-	tableName: string,
+export const Model = <
+	TTableName extends string,
+	TColumnsMap extends Record<string, PgColumnBuilderBase>
+>(
+	tableName: TTableName,
 	columns: TColumnsMap
 ) => {
 	const table = pgTable(tableName, columns);
@@ -198,7 +202,7 @@ export const Model = <TColumnsMap extends Record<string, PgColumnBuilderBase>>(
 		/**
 		 * The drizzle's table schema wrapped by this model.
 		 */
-		public static get table(): ReturnType<typeof pgTable<string, TColumnsMap>> {
+		public static get table(): ReturnType<typeof pgTable<TTableName, TColumnsMap>> {
 			// If we are not inside an Application context, we can't use the tenancy system
 			if (!Application.instance || !Application.context.getStore) {
 				return table;
@@ -207,7 +211,7 @@ export const Model = <TColumnsMap extends Record<string, PgColumnBuilderBase>>(
 			if (this.supportTenancy) {
 				const tenant = Tenancy.getCurrentTenant() ?? 'public';
 				// @ts-expect-error typeof this strangely doesn't match the ModelClass type
-				return Tenancy.withTenant(tenant, this);
+				return Tenancy.wrapTenant(tenant, this);
 			}
 
 			return table;
@@ -292,9 +296,13 @@ export namespace Tenancy {
 	 * @param model The model class that wraps the `PgTable`.
 	 * @returns The drizzle's table schema wrapped by the tenant.
 	 */
-	export const withTenant = <
-		T extends ModelClass<TColumnsMap>,
+	export const wrapTenant = <
+		T extends ModelClass<TTableName, TColumnsMap>,
+		TTableName extends string = T extends ModelClass<infer TTableName, infer TColumnsMap>
+			? TTableName
+			: string,
 		TColumnsMap extends Record<string, PgColumnBuilderBase> = T extends ModelClass<
+			TTableName,
 			infer TColumnsMap
 		>
 			? TColumnsMap
@@ -302,21 +310,21 @@ export namespace Tenancy {
 	>(
 		tenant: string,
 		model: T
-	): ReturnType<typeof pgTable<string, TColumnsMap>> => {
+	): ReturnType<typeof pgTable<TTableName, TColumnsMap>> => {
 		if (tenant === 'public') {
 			return pgTable(model.tableName, model.columns);
 		}
 
 		const tableName = `${tenant}.${model.tableName}`;
 		if (tenantSchemas.has(tableName)) {
-			return tenantSchemas.get(tableName)! as ReturnType<typeof pgTable<string, TColumnsMap>>;
+			return tenantSchemas.get(tableName)! as ReturnType<typeof pgTable<TTableName, TColumnsMap>>;
 		}
 
 		const tenantSchema = getTenantSchema(tenant);
 		const schemaTable = tenantSchema.table(model.tableName, model.columns);
 		tenantSchemas.set(tableName, schemaTable);
 
-		return schemaTable as unknown as ReturnType<typeof pgTable<string, TColumnsMap>>;
+		return schemaTable as unknown as ReturnType<typeof pgTable<TTableName, TColumnsMap>>;
 	};
 
 	/**
@@ -332,5 +340,21 @@ export namespace Tenancy {
 		schemaRegistry.set(tenant, tenantSchema);
 
 		return tenantSchema;
+	};
+
+	/**
+	 * Runs the given callback in a context with the given tenant.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param tenant The name of the tenant.
+	 * @param callback The callback to run.
+	 * @returns The result of the callback.
+	 */
+	export const withTenant = <TReturn>(tenant: string, callback: () => TReturn): TReturn => {
+		const currentStore = Application.context.getStore();
+
+		const newStore = new Map(currentStore);
+		newStore.set('tenant', tenant);
+
+		return Application.context.run(newStore, callback);
 	};
 }

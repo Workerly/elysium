@@ -37,7 +37,8 @@ mock.module('../src/app', () => ({
 	Application: {
 		...Application,
 		context: {
-			getStore: mockGetStore
+			getStore: mockGetStore,
+			run: mock((_, callback) => callback())
 		}
 	}
 }));
@@ -252,7 +253,7 @@ describe('Model', () => {
 			const pgSchemaSpy = spyOn(d, 'pgSchema');
 
 			// Call the function with a non-public tenant
-			const table = Tenancy.withTenant('test-tenant', MockModel);
+			const table = Tenancy.wrapTenant('test-tenant', MockModel);
 
 			// Check if pgSchema was called with the correct tenant name
 			expect(pgSchemaSpy).toHaveBeenCalledWith('test-tenant');
@@ -261,7 +262,7 @@ describe('Model', () => {
 			expect(table).toBeDefined();
 
 			// Call the function with the public tenant
-			const publicTable = Tenancy.withTenant('public', MockModel);
+			const publicTable = Tenancy.wrapTenant('public', MockModel);
 
 			// Check if pgTable was called with the correct parameters
 			expect(pgTableSpy).toHaveBeenCalledWith('users', MockModel.columns);
@@ -295,16 +296,41 @@ describe('Model', () => {
 			const pgSchemaSpy = spyOn(d, 'pgSchema');
 
 			// Call the function with a tenant
-			Tenancy.withTenant('cache-tenant', MockModel);
+			Tenancy.wrapTenant('cache-tenant', MockModel);
 
 			// Reset the mock to check if it's called again
 			pgSchemaSpy.mockClear();
 
 			// Call the function with the same tenant and model
-			Tenancy.withTenant('cache-tenant', MockModel);
+			Tenancy.wrapTenant('cache-tenant', MockModel);
 
 			// Check if pgSchema was not called again
 			expect(pgSchemaSpy).not.toHaveBeenCalled();
+		});
+
+		it('should run the callback with the correct tenant', async () => {
+			// Import the mocked modules
+			const getStoreSpy = spyOn(Application.context, 'getStore');
+			const runSpy = spyOn(Application.context, 'run');
+			const mockCallback = mock(() => {
+				// Check if getStore was called
+				expect(getStoreSpy).toHaveBeenCalled();
+
+				// Check if run was called with the correct tenant
+				expect(runSpy).toHaveBeenCalledWith(expect.any(Map), expect.any(Function));
+				expect(runSpy.mock.calls[0][0].get('tenant')).toBe('new-tenant');
+
+				return 'test-result';
+			});
+
+			// Call the function
+			const result = Tenancy.withTenant('new-tenant', mockCallback);
+
+			// Check if run was called with the correct callback
+			expect(runSpy).toHaveBeenCalledWith(expect.any(Map), mockCallback);
+
+			// Check if the result is correct
+			expect(result).toBe('test-result');
 		});
 	});
 });
