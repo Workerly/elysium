@@ -480,6 +480,11 @@ export abstract class Application extends InteractsWithConsole {
 			.onError({ as: 'global' }, async (e) => {
 				if (await this.onError(e)) {
 					Event.emit('elysium:error', e);
+					this.trace({
+						name: 'HttpError',
+						message: 'Unexpected error while handling HTTP request',
+						...e.error
+					});
 
 					let data = {};
 

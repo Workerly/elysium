@@ -142,22 +142,26 @@ export class InteractsWithConsole {
 		// Display the title if provided
 		if (title) {
 			this.title(title);
+		} else {
+			this.newLine();
 		}
 
 		// Display the error name and message in red
 		this.write(this.format(`${errorName}: ${errorMessage}`, ConsoleFormat.RED));
 
-		// Display the stack trace in gray, each line prefixed by a tab for readability
-		this.write(this.format('Stack Trace:', ConsoleFormat.BOLD));
-		this.write(
-			this.format(
-				errorStack
-					.split('\n')
-					.map((line) => `\t${line}`)
-					.join('\n'),
-				ConsoleFormat.GRAY
-			)
-		);
+		if (error.stack) {
+			// Display the stack trace in gray, each line prefixed by a tab for readability
+			this.write(this.format('Stack Trace:', ConsoleFormat.BOLD));
+			this.write(
+				this.format(
+					errorStack
+						.split('\n')
+						.map((line) => `\t${line}`)
+						.join('\n'),
+					ConsoleFormat.GRAY
+				)
+			);
+		}
 
 		// Display any other custom properties
 		const customProps = omit(error, ['name', 'message', 'stack']);
@@ -169,6 +173,8 @@ export class InteractsWithConsole {
 				this.write(`\t${prop}: ${JSON.stringify(value)}`);
 			});
 		}
+
+		this.newLine();
 	}
 
 	/**
