@@ -196,6 +196,20 @@ export const Repository = <
 		}
 
 		/**
+		 * Finds the first record with a column matching the given value.
+		 * @param column The column to filter by.
+		 * @param value The value the column should match.
+		 * @returns The first record with a column matching the given value.
+		 */
+		public async findBy<TKey extends keyof TSelect>(
+			column: TKey,
+			value: TSelect[TKey]
+		): Promise<TSelect | null> {
+			const [row] = await this.db.select().from(model.table).where(eq(column, value));
+			return (row ?? null) as TSelect | null;
+		}
+
+		/**
 		 * Inserts a new record in the database.
 		 * @param data The data to insert.
 		 * @returns The inserted record.
