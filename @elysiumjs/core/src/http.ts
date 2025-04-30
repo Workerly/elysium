@@ -62,7 +62,7 @@ type HttpRequestHandlerMetadata = {
 	/**
 	 * The response schema.
 	 */
-	response?: TSchema;
+	response?: TSchema | Record<number, TSchema>;
 
 	/**
 	 * The request body schema.
@@ -271,7 +271,7 @@ export type RequestHandlerDecoratorProps = {
 	/**
 	 * The schema of the response body.
 	 */
-	response?: TSchema;
+	response?: TSchema | Record<number, TSchema>;
 
 	/**
 	 * The operation ID for the handler.
