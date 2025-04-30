@@ -223,7 +223,7 @@ export namespace Service {
 			if (s === null) {
 				// TODO: Use the logger service here
 				console.error(
-					`Cannot inject a service. No service was registered with the name: ${dependency.name}`
+					`Cannot inject service ${dependency.name}. No service was registered with the name: ${dependency.name}`
 				);
 				process.exit(1);
 			}

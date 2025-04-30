@@ -90,22 +90,32 @@ export type WampProps = {
 	 * The interval to wait between retries when connecting to the WAMP server.
 	 */
 	retryInterval?: number;
+
+	/**
+	 * The authentication ID to use in challenges.
+	 */
+	authid?: string;
+
+	/**
+	 * An array of supported authentication methods.
+	 */
+	authmethods?: string[];
 };
 
 /**
  * Data sent to a WAMP RPC.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type WampRegistrationHandlerArgs = {
+export type WampRegistrationHandlerArgs<TList = any[], TDict = any> = {
 	/**
 	 * The arguments passed to the RPC or subscription.
 	 */
-	argsList: any[];
+	argsList: TList;
 
 	/**
 	 * The keyword arguments passed to the RPC or subscription.
 	 */
-	argsDict: any;
+	argsDict: TDict;
 
 	/**
 	 * The WAMP details object.
@@ -213,6 +223,7 @@ export namespace Wamp {
 				const w = new Wampy(options.url, {
 					ws: WampWebsocket,
 					...omit(options, ['url']),
+					onChallenge: metadata.challenge?.bind(controller),
 					onClose: metadata.close?.bind(controller),
 					onError() {
 						metadata.error?.call(controller);
@@ -316,11 +327,28 @@ export namespace Wamp {
 	};
 
 	/**
-	 * Marks a method as the WAMP "open" event handler.
+	 * Marks a method as the WAMP "challenge" event handler.
+	 *
+	 * This decorator should be used on a WAMP controller method. Only one "challenge" event handler
+	 * can be defined per WAMP controller.
+	 *
 	 * @author Axel Nana <axel.nana@workbud.com>
+	 */
+	export const onChallenge = (): MethodDecorator => {
+		return function (target, _propertyKey, descriptor) {
+			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
+			metadata.challenge = descriptor.value;
+			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
+		};
+	};
+
+	/**
+	 * Marks a method as the WAMP "open" event handler.
 	 *
 	 * This decorator should be used on a WAMP controller method. Only one "open" event handler
 	 * can be defined per WAMP controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onOpen = (): MethodDecorator => {
 		return function (target, _propertyKey, descriptor) {
@@ -332,10 +360,11 @@ export namespace Wamp {
 
 	/**
 	 * Marks a method as the WAMP "close" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a WAMP controller method. Only one "close" event handler
 	 * can be defined per WAMP controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onClose = (): MethodDecorator => {
 		return function (target, _propertyKey, descriptor) {
@@ -347,10 +376,11 @@ export namespace Wamp {
 
 	/**
 	 * Marks a method as the WAMP "error" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a WAMP controller method. Only one "error" event handler
 	 * can be defined per WAMP controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onError = (): MethodDecorator => {
 		return function (target, _propertyKey, descriptor) {
@@ -362,10 +392,11 @@ export namespace Wamp {
 
 	/**
 	 * Marks a method as the WAMP "reconnect" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a WAMP controller method. Only one "reconnect" event handler
 	 * can be defined per WAMP controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onReconnect = (): MethodDecorator => {
 		return function (target, _propertyKey, descriptor) {
@@ -377,10 +408,11 @@ export namespace Wamp {
 
 	/**
 	 * Marks a method as the WAMP "reconnectSuccess" event handler.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This decorator should be used on a WAMP controller method. Only one "reconnectSuccess" event handler
 	 * can be defined per WAMP controller.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onReconnectSuccess = (): MethodDecorator => {
 		return function (target, _propertyKey, descriptor) {
