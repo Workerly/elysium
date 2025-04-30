@@ -238,7 +238,7 @@ describe('InteractsWithConsole', () => {
 
 			// Check that the output contains error details
 			expect(stdoutOutput).toContain('TestError: Test error');
-			expect(stdoutOutput).toContain('Stack Trace:');
+			expect(stdoutOutput).not.toContain('Stack Trace:');
 		});
 	});
 

@@ -46,6 +46,7 @@ const mockController = {
 	handleRpc: mock(),
 	handleSubscription: mock(),
 	onOpenHandler: mock(),
+	onChallengeHandler: mock(),
 	onCloseHandler: mock(),
 	onErrorHandler: mock(),
 	onReconnectHandler: mock(),
@@ -318,6 +319,27 @@ describe('Wamp', () => {
 	});
 
 	describe('Lifecycle event decorators', () => {
+		it('should register onChallenge handler', async () => {
+			// Create a test class
+			@Wamp.controller({
+				url: 'ws://localhost:8080/ws',
+				realm: 'realm1',
+				authid: 'test',
+				authmethods: ['ticket', 'wampcra']
+			})
+			class TestWampController {
+				@Wamp.onChallenge()
+				onChallengeHandler() {
+					mockController.onChallengeHandler();
+				}
+			}
+
+			// Check if metadata was set correctly
+			const metadata = Reflect.getMetadata(Symbols.wamp, TestWampController);
+			expect(metadata).toBeDefined();
+			expect(metadata.challenge).toBeDefined();
+		});
+
 		it('should register onOpen handler', async () => {
 			// Create a test class
 			@Wamp.controller({

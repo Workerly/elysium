@@ -273,6 +273,18 @@ describe('Repository', () => {
 			expect(result).not.toEqual({ id: '999', name: 'Test' });
 		});
 
+		it('should support filtering records using findBy method', async () => {
+			// Arrange
+			const data = { name: 'Test', age: 25 };
+			const insertedRecord = await repo.insert(data);
+
+			// Act
+			const foundRecord = await repo.findBy('name', 'Test');
+
+			// Assert
+			expect(foundRecord).toEqual(insertedRecord);
+		});
+
 		it('should insert a record', async () => {
 			const data = { name: 'New Test' };
 			const result = await repo.insert(data);
