@@ -34,6 +34,32 @@ import { nextTick, Symbols } from './utils';
 export type Route = `/${string}`;
 
 /**
+ * A class for validating data against a schema.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type ValidatorClass<T extends TSchema = TSchema> = {
+	/**
+	 * The validation schema. This schema is automatically checked against the input data during
+	 * the validation stage of the HTTP request.
+	 */
+	readonly schema: T;
+
+	/**
+	 * Whether the request should be authorized before validation. If the request is not authorized,
+	 * the validation will be skipped.
+	 */
+	authorize(ctx: Context<T['static']>): Promise<boolean>;
+
+	/**
+	 * Processes custom validation logic. This method is called after the validation schema is checked
+	 * against the input data. So it's safe to assume that the schema is valid.
+	 * @param data The input data to validate.
+	 * @returns Whether the input data is valid.
+	 */
+	validate(ctx: Context<T['static']>): Promise<boolean>;
+};
+
+/**
  * A function that handles an HTTP request.
  * @author Axel Nana <axel.nana@workbud.com>
  */
@@ -67,7 +93,7 @@ type HttpRequestHandlerMetadata = {
 	/**
 	 * The request body schema.
 	 */
-	body?: { schema?: TSchema; index: number };
+	body?: { schema?: TSchema; validator?: ValidatorClass; index: number };
 
 	/**
 	 * The request query schema.
@@ -164,8 +190,14 @@ export type Singleton<TController = unknown, TModule extends Module = Module> = 
  * The Elysia context with the controller injected.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type Context<TController = unknown, TModule extends Module = Module> = ElysiaContext<
-	{},
+export type Context<
+	TBody = unknown,
+	TController = unknown,
+	TModule extends Module = Module
+> = ElysiaContext<
+	{
+		body: TBody;
+	},
 	Singleton<TController, TModule>
 >;
 
@@ -373,6 +405,8 @@ export namespace Http {
 					const isGenerator = route.handler.constructor.name.includes('GeneratorFunction');
 					const isSSE = route.method === 'elysium:SSE';
 					const isTransactional = route.transactional ?? props.transactional ?? false;
+					const isValidator =
+						route.body && route.body.schema === undefined && route.body.validator !== undefined;
 
 					route.method = isSSE ? 'GET' : route.method;
 
@@ -439,6 +473,17 @@ export namespace Http {
 							};
 						}
 
+						if (isValidator) {
+							return async function (c: Context) {
+								if (await route.body!.validator!.validate(c)) {
+									const handler = initTransactedHandler(c);
+									return await handler(...(await getParameters(c)));
+								}
+
+								throw c.error(400, 'Invalid request body');
+							};
+						}
+
 						return async function (c: Context) {
 							const handler = initTransactedHandler(c);
 							return await handler(...(await getParameters(c)));
@@ -456,6 +501,13 @@ export namespace Http {
 					app.route(route.method, route.path, getHandler(), {
 						// @ts-ignore
 						config: {},
+						async transform(c) {
+							if (isValidator && !(await route.body!.validator!.authorize(c as Context))) {
+								throw c.error(401, 'Unauthorized');
+							}
+
+							return executeMiddlewareChain(mi, c, 'onTransform');
+						},
 						beforeHandle(c) {
 							return executeMiddlewareChain(mi, c, 'onBeforeHandle');
 						},
@@ -470,7 +522,7 @@ export namespace Http {
 							description: route.description,
 							operationId: route.operationId
 						},
-						body: route.body?.schema,
+						body: isValidator ? route.body?.validator?.schema : route.body?.schema,
 						response: route.response,
 						params: isEmpty(params) ? undefined : t.Object(params)
 					});
@@ -647,9 +699,23 @@ export namespace Http {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param schema The schema of the request body.
 	 */
-	export const body = (schema?: TSchema): ParameterDecorator => {
+	export const body = (schema?: TSchema | ValidatorClass): ParameterDecorator => {
 		return function (target, propertyKey, parameterIndex) {
-			Reflect.defineMetadata('http:body', { schema, index: parameterIndex }, target, propertyKey!);
+			if (typeof schema === 'function') {
+				Reflect.defineMetadata(
+					'http:body',
+					{ validator: schema, index: parameterIndex },
+					target,
+					propertyKey!
+				);
+			} else {
+				Reflect.defineMetadata(
+					'http:body',
+					{ schema, index: parameterIndex },
+					target,
+					propertyKey!
+				);
+			}
 		};
 	};
 

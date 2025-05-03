@@ -61,6 +61,14 @@ export const executeMiddlewareChain = (
 export const applyMiddlewares = (middlewares: Class<Middleware>[], plugin: AnyElysia) => {
 	const mi = middlewares.map((middleware) => Service.make<Middleware>(middleware));
 
+	plugin.onRequest((c) => {
+		return executeMiddlewareChain(mi, c, 'onRequest');
+	});
+
+	plugin.onTransform((c) => {
+		return executeMiddlewareChain(mi, c, 'onTransform');
+	});
+
 	plugin.onBeforeHandle((c) => {
 		return executeMiddlewareChain(mi, c, 'onBeforeHandle');
 	});
@@ -77,8 +85,9 @@ export const applyMiddlewares = (middlewares: Class<Middleware>[], plugin: AnyEl
 /**
  * Base class for middleware.
  * @author Axel Nana <axel.nana@workbud.com>
+ * @template TGuards The list of guards for the middleware.
  */
-export abstract class Middleware {
+export abstract class Middleware<TGuards extends string[] = []> {
 	/**
 	 * Registers a list of middlewares to be applied on a controller or endpoint.
 	 * @author Axel Nana <axel.nana@workbud.com>
@@ -117,9 +126,23 @@ export abstract class Middleware {
 	/**
 	 * Gets the list of guards for the middleware.
 	 */
-	public get guards(): string[] {
+	public get guards(): TGuards {
 		return Reflect.getMetadata(Symbols.middlewareGuards, this.constructor) ?? [];
 	}
+
+	/**
+	 * Called first before everything else. This middleware hook works only when used on
+	 * a controller, a module, or the application.
+	 * @param ctx The request context.
+	 */
+	public onRequest(ctx: Context): any {}
+
+	/**
+	 * Called before validation, but after the request has been parsed.
+	 * Use this method to modify the request inputs before validation.
+	 * @param ctx The request context.
+	 */
+	public onTransform(ctx: Context): any {}
 
 	/**
 	 * Called after the request has been handled, but before the response is sent.
