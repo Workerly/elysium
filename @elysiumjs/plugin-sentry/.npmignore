@@ -2,7 +2,7 @@
 coverage
 tests
 node_modules
-src
+.yalc
 
 .gitignore
 .prettierignore
@@ -12,5 +12,4 @@ src
 bun.lock
 bunfig.toml
 bun.lockb
-
-tsconfig.json
+yalc.lock
