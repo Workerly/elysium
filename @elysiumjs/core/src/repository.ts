@@ -196,6 +196,25 @@ export const Repository = <
 		}
 
 		/**
+		 * Get a paginated subset of the records in the database.
+		 * @param page The page number to retrieve.
+		 * @param count The number of records to retrieve per page.
+		 * @returns A paginated response containing the records and the total number of records.
+		 */
+		public async paginate(
+			count: number,
+			page: number = 1
+		): Promise<{ page: number; data: TSelect[]; total: number }> {
+			const total = await this.db.$count(model.table);
+			const offset = Math.max(page - 1, 0) * count;
+			return {
+				page,
+				total,
+				data: await this.db.select().from(model.table).offset(offset).limit(count)
+			};
+		}
+
+		/**
 		 * Retrieves a record by its id.
 		 * @param id The id of the record to retrieve.
 		 * @returns The record with the given id.
