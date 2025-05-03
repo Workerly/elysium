@@ -20,7 +20,6 @@ import type { DatabaseConnection } from './database';
 import type { ModelClass } from './model';
 
 import { eq } from 'drizzle-orm';
-import { pgTable } from 'drizzle-orm/pg-core';
 
 import { Application } from './app';
 import { Database } from './database';
@@ -39,9 +38,13 @@ export type IdType = number | string;
  * @template TColumnsMap The table columns config.
  */
 export interface RepositoryInterface<
-	TModel extends ModelClass<TColumnsMap>,
+	TModel extends ModelClass<TTableName, TColumnsMap>,
 	TId extends IdType = string,
+	TTableName extends string = TModel extends ModelClass<infer TTableName, infer _>
+		? TTableName
+		: string,
 	TColumnsMap extends Record<string, PgColumnBuilderBase> = TModel extends ModelClass<
+		TTableName,
 		infer TColumnsMap
 	>
 		? TColumnsMap
@@ -104,14 +107,18 @@ export interface RepositoryInterface<
  * @template TColumnsMap The table columns config.
  */
 export type RepositoryClass<
-	TModel extends ModelClass<TColumnsMap>,
+	TModel extends ModelClass<TTableName, TColumnsMap>,
 	TId extends IdType = string,
+	TTableName extends string = TModel extends ModelClass<infer TTableName, infer _>
+		? TTableName
+		: string,
 	TColumnsMap extends Record<string, PgColumnBuilderBase> = TModel extends ModelClass<
+		TTableName,
 		infer TColumnsMap
 	>
 		? TColumnsMap
 		: Record<string, PgColumnBuilderBase>
-> = Class<RepositoryInterface<TModel, TId, TColumnsMap>> & {
+> = Class<RepositoryInterface<TModel, TId, TTableName, TColumnsMap>> & {
 	/**
 	 * The drizzle's table schema wrapped by the repository.
 	 */
@@ -134,9 +141,13 @@ export type RepositoryClass<
  * @template model The model class wrapped by the repository.
  */
 export const Repository = <
-	TModel extends ModelClass<TColumnsMap>,
+	TModel extends ModelClass<TTableName, TColumnsMap>,
 	TId extends IdType = string,
+	TTableName extends string = TModel extends ModelClass<infer TTableName, infer _>
+		? TTableName
+		: string,
 	TColumnsMap extends Record<string, PgColumnBuilderBase> = TModel extends ModelClass<
+		TTableName,
 		infer TColumnsMap
 	>
 		? TColumnsMap
@@ -148,9 +159,7 @@ export const Repository = <
 	type TInsert = TModel['$inferInsert'];
 	type TUpdate = TModel['$inferUpdate'];
 
-	const table = pgTable(model.tableName, model.columns);
-
-	class R implements RepositoryInterface<TModel, TId, TColumnsMap> {
+	class R implements RepositoryInterface<TModel, TId, TTableName, TColumnsMap> {
 		/**
 		 * The drizzle's table schema wrapped by this repository.
 		 */
@@ -167,7 +176,8 @@ export const Repository = <
 		 * The database connection used by this repository.
 		 */
 		public get db(): DatabaseConnection {
-			const connection = (this.constructor as RepositoryClass<TModel, TId, TColumnsMap>).connection;
+			const connection = (this.constructor as RepositoryClass<TModel, TId, TTableName, TColumnsMap>)
+				.connection;
 			let db: DatabaseConnection | null = null;
 
 			if (connection === 'default') {
@@ -205,7 +215,7 @@ export const Repository = <
 			column: TKey,
 			value: TSelect[TKey]
 		): Promise<TSelect | null> {
-			const [row] = await this.db.select().from(model.table).where(eq(column, value));
+			const [row] = await this.db.select().from(model.table).where(eq(model.table[column], value));
 			return (row ?? null) as TSelect | null;
 		}
 

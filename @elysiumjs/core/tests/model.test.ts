@@ -192,12 +192,12 @@ describe('Model', () => {
 			class UserModel extends Model('users', mockColumns) {}
 
 			// Check if pgTable was called with the correct parameters
-			expect(pgTableSpy).toHaveBeenCalledWith('users', mockColumns);
+			expect(pgTableSpy).toHaveBeenCalledWith('users', mockColumns, undefined);
 
 			// Check if the model class has the correct static properties
 			expect(UserModel.tableName).toBe('users');
 			expect(UserModel.columns).toBe(mockColumns);
-			expect(UserModel.createSchema).toBeDefined();
+			expect(UserModel.insertSchema).toBeDefined();
 			expect(UserModel.updateSchema).toBeDefined();
 			expect(UserModel.selectSchema).toBeDefined();
 			expect(UserModel.supportTenancy).toBe(false);

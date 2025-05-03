@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { PgColumn, PgColumnBuilderBase, PgSchema, PgTable } from 'drizzle-orm/pg-core';
+import type { BuildExtraConfigColumns } from 'drizzle-orm';
+import type {
+	PgColumn,
+	PgColumnBuilderBase,
+	PgSchema,
+	PgTable,
+	PgTableExtraConfigValue
+} from 'drizzle-orm/pg-core';
 import type { TSchema } from 'elysia';
 
 import { getTableConfig, pgSchema, pgTable } from 'drizzle-orm/pg-core';
@@ -65,7 +72,9 @@ const parseTypes = (element: PgColumn) => {
 	let type = (() => {
 		switch (element.dataType) {
 			case 'string':
-				return t.String();
+				return t.String({
+					format: element.columnType === 'PgUUID' ? 'uuid' : undefined
+				});
 			case 'number':
 				return t.Number();
 			case 'boolean':
@@ -89,6 +98,8 @@ const parseTypes = (element: PgColumn) => {
 
 	if (!element.notNull) {
 		type = t.Optional(type);
+	} else {
+		type = t.Required(type);
 	}
 
 	return type;
@@ -103,7 +114,7 @@ const parseTypes = (element: PgColumn) => {
 export type ModelClass<
 	TTableName extends string,
 	TColumnsMap extends Record<string, PgColumnBuilderBase>,
-	TTable extends PgTable = ReturnType<typeof pgTable<string, TColumnsMap>>
+	TTable extends PgTable = ReturnType<typeof pgTable<TTableName, TColumnsMap>>
 > = {
 	/**
 	 * The data type returned by the select queries.
@@ -137,9 +148,16 @@ export type ModelClass<
 	readonly columns: TColumnsMap;
 
 	/**
+	 * The extra configuration for the table.
+	 */
+	readonly extraConfig?: (
+		self: BuildExtraConfigColumns<TTableName, TColumnsMap, 'pg'>
+	) => PgTableExtraConfigValue[];
+
+	/**
 	 * The validation schema for creating records.
 	 */
-	readonly createSchema: TSchema;
+	readonly insertSchema: TSchema;
 
 	/**
 	 * The validation schema for updating records.
@@ -179,9 +197,12 @@ export const Model = <
 	TColumnsMap extends Record<string, PgColumnBuilderBase>
 >(
 	tableName: TTableName,
-	columns: TColumnsMap
+	columns: TColumnsMap,
+	extraConfig?: (
+		self: BuildExtraConfigColumns<TTableName, TColumnsMap, 'pg'>
+	) => PgTableExtraConfigValue[]
 ) => {
-	const table = pgTable(tableName, columns);
+	const table = pgTable(tableName, columns, extraConfig);
 
 	class M {
 		/**
@@ -228,9 +249,14 @@ export const Model = <
 		public static readonly columns: TColumnsMap = columns;
 
 		/**
+		 * The extra configuration for the table.
+		 */
+		public static readonly extraConfig = extraConfig;
+
+		/**
 		 * The validation schema for creating records.
 		 */
-		public static readonly createSchema = createSchemaFromDrizzle(table, { mode: 'create' });
+		public static readonly insertSchema = createSchemaFromDrizzle(table, { mode: 'create' });
 
 		/**
 		 * The validation schema for updating records.
