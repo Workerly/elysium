@@ -47,6 +47,9 @@ export type ElysiumPlugin = (app: Application) => Promise<AnyElysia>;
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export type AppProps = {
+	// Allows to pass custom options to the application properties.
+	[key: string]: any;
+
 	/**
 	 * Enables or disables debug mode.
 	 */
@@ -349,6 +352,15 @@ export abstract class Application extends InteractsWithConsole {
 		return process.exit(0);
 	}
 
+	/**
+	 * Retrieves the configuration value for the given key.
+	 * @param key The key to retrieve the configuration value for.
+	 * @returns The configuration value for the given key, or `null` if not found.
+	 */
+	public getConfig<T>(key: keyof AppProps): T | null {
+		return Reflect.getMetadata(Symbols.app, this.constructor)?.[key] ?? null;
+	}
+
 	private async commandWork(argv: string[]) {
 		this.info('Starting worker process...');
 
@@ -483,15 +495,15 @@ export abstract class Application extends InteractsWithConsole {
 					this.trace({
 						name: 'HttpError',
 						message: 'Unexpected error while handling HTTP request',
+						// @ts-expect-error The stack property may not exist in the error.
+						stack: e.error.stack,
 						...e.error
 					});
 
 					let data = {};
 
 					if (typeof e.code === 'number') {
-						data = {
-							message: e.error.response
-						};
+						return e.error.response;
 					} else {
 						switch (e.code) {
 							case 'VALIDATION': {
@@ -510,54 +522,8 @@ export abstract class Application extends InteractsWithConsole {
 						}
 					}
 
-					const type = (() => {
-						if (typeof e.code === 'string') return e.code;
-						else {
-							switch (e.code) {
-								case 500:
-									return 'INTERNAL_SERVER_ERROR';
-								case 400:
-									return 'BAD_REQUEST';
-								case 401:
-									return 'UNAUTHORIZED';
-								case 403:
-									return 'FORBIDDEN';
-								case 404:
-									return 'NOT_FOUND';
-								case 405:
-									return 'METHOD_NOT_ALLOWED';
-								case 409:
-									return 'CONFLICT';
-								case 429:
-									return 'TOO_MANY_REQUESTS';
-								case 422:
-									return 'UNPROCESSABLE_ENTITY';
-								case 426:
-									return 'UPGRADE_REQUIRED';
-								case 428:
-									return 'PRECONDITION_REQUIRED';
-								case 431:
-									return 'REQUEST_HEADER_FIELDS_TOO_LARGE';
-								case 451:
-									return 'UNAVAILABLE_FOR_LEGAL_REASONS';
-								case 501:
-									return 'NOT_IMPLEMENTED';
-								case 502:
-									return 'BAD_GATEWAY';
-								case 503:
-									return 'SERVICE_UNAVAILABLE';
-								case 504:
-									return 'GATEWAY_TIMEOUT';
-								case 505:
-									return 'HTTP_VERSION_NOT_SUPPORTED';
-							}
-						}
-
-						return 'UNKNOWN';
-					})();
-
 					return {
-						type,
+						type: e.code,
 						data
 					};
 				}
