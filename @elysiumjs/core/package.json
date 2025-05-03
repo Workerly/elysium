@@ -29,7 +29,7 @@
 		"@elysiajs/swagger": "^1.2.2",
 		"cache-manager": "^6.4.2",
 		"cacheable": "^1.8.10",
-		"drizzle-orm": "^0.43.1",
+		"drizzle-orm": "0.43.1-4aa795a",
 		"elysia": "latest",
 		"radash": "^12.1.0",
 		"reflect-metadata": "^0.2.2",

@@ -14,9 +14,14 @@
 
 import type { DrizzleConfig } from 'drizzle-orm';
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
+import type { CacheConfig } from 'drizzle-orm/cache/core/types';
+import type { CacheInterface } from './cache';
 
+import { getTableName, is, Table } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sql';
+import { Cache as DrizzleCache } from 'drizzle-orm/cache/core';
 
+import { Cache } from './cache';
 import { Service } from './service';
 
 /**
@@ -25,7 +30,7 @@ import { Service } from './service';
  */
 export type DatabaseConnectionProps<
 	TSchema extends Record<string, unknown> = Record<string, never>
-> = DrizzleConfig<TSchema> &
+> = Omit<DrizzleConfig<TSchema>, 'cache'> &
 	(
 		| {
 				connection:
@@ -37,7 +42,40 @@ export type DatabaseConnectionProps<
 		| {
 				client: Bun.SQL;
 		  }
-	);
+	) & {
+		/**
+		 * Configures caching behavior for the database connection.
+		 * Set it to `true` to enable caching with default configurations.
+		 */
+		cache?:
+			| true
+			| {
+					/**
+					 * Whether to enable caching.
+					 */
+					enabled?: boolean;
+
+					/**
+					 * The default TTL for cached data, in seconds.
+					 * @default 1
+					 */
+					ttl?: number;
+
+					/**
+					 * The caching strategy.
+					 * Set it to `all` to cache all queries automatically.
+					 * Set it to `explicit` to cache queries manually.
+					 * @default 'explicit'
+					 */
+					strategy?: 'explicit' | 'all';
+
+					/**
+					 * The storage engine to use.
+					 * @default 'redis'
+					 */
+					storage?: 'redis' | 'memory';
+			  };
+	};
 
 /**
  * A database connection.
@@ -46,6 +84,83 @@ export type DatabaseConnectionProps<
 export type DatabaseConnection = BunSQLDatabase<Record<string, never>> & {
 	$client: Bun.SQL;
 };
+
+/**
+ * Database cache implementation for Drizzle.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export class DatabaseCache extends DrizzleCache {
+	#cache: Omit<CacheInterface, 'tags'>;
+
+	private usedTablesPerKey: Record<string, string[]> = {};
+
+	constructor(
+		private readonly cacheStrategy: 'explicit' | 'all' = 'explicit',
+		private readonly globalTtl: number = 1,
+		storageEngine: 'redis' | 'memory' = 'redis'
+	) {
+		super();
+		this.#cache = Cache[storageEngine].tags('database');
+	}
+
+	public override strategy(): 'explicit' | 'all' {
+		return this.cacheStrategy;
+	}
+
+	public override async get(key: string): Promise<any[] | undefined> {
+		const res = (await this.#cache.get<any[]>(key)) ?? undefined;
+		return res;
+	}
+
+	public override async put(
+		key: string,
+		response: any,
+		tables: string[],
+		isTag: boolean,
+		config?: CacheConfig
+	): Promise<void> {
+		console.log({ key, response, tables, isTag, config });
+		await this.#cache.set(key, response, (config?.ex ?? this.globalTtl) * 1000);
+		for (const table of tables) {
+			const keys = this.usedTablesPerKey[table];
+			if (keys === undefined) {
+				this.usedTablesPerKey[table] = [key];
+			} else {
+				keys.push(key);
+			}
+		}
+	}
+
+	public override async onMutate(params: {
+		tags: string | string[];
+		tables: string | string[] | Table<any> | Table<any>[];
+	}): Promise<void> {
+		const tagsArray = params.tags ? (Array.isArray(params.tags) ? params.tags : [params.tags]) : [];
+		const tablesArray = params.tables
+			? Array.isArray(params.tables)
+				? params.tables
+				: [params.tables]
+			: [];
+
+		const keysToDelete = new Set<string>();
+
+		for (const table of tablesArray) {
+			const tableName = is(table, Table) ? getTableName(table) : (table as string);
+			const keys = this.usedTablesPerKey[tableName] ?? [];
+			for (const key of keys) keysToDelete.add(key);
+		}
+
+		if (keysToDelete.size > 0 || tagsArray.length > 0) {
+			await this.#cache.mdel(tagsArray);
+			await this.#cache.mdel([...keysToDelete]);
+
+			for (const table of tablesArray) {
+				const tableName = is(table, Table) ? getTableName(table) : (table as string);
+				this.usedTablesPerKey[tableName] = [];
+			}
+		}
+	}
+}
 
 export namespace Database {
 	/**
@@ -94,7 +209,20 @@ export namespace Database {
 			process.exit(1);
 		}
 
-		return Service.instance(getConnectionName(name), drizzle(config));
+		return Service.instance(
+			getConnectionName(name),
+			drizzle({
+				...config,
+				cache:
+					config.cache === undefined
+						? undefined
+						: config.cache === true
+							? new DatabaseCache()
+							: config.cache.enabled
+								? new DatabaseCache(config.cache.strategy, config.cache.ttl, config.cache.storage)
+								: undefined
+			})
+		);
 	};
 
 	/**

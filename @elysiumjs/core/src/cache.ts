@@ -25,7 +25,7 @@ import { KeyvRedis } from './redis';
  * Interface for a cache storage.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-interface CacheInterface {
+export interface CacheInterface {
 	/**
 	 * Retrieves the cached data for a given key.
 	 * @typeParam T The type of the cached data.
