@@ -25,6 +25,8 @@ class EventBus extends EventEmitter {
 
 	private constructor() {
 		super();
+
+		this.on('error', (error) => this.emitError(error));
 	}
 
 	public emitError(error: unknown) {

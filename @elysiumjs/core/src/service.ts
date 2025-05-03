@@ -169,15 +169,17 @@ export namespace Service {
 	/**
 	 * Resolves a registered service and set it as a parameter value.
 	 * @author Axel Nana <axel.nana@workbud.com>
-	 * @param name An optional name for the service. If not set, the name of the parameter's type is used instead.
+	 * @param service An optional name for the service. If not set, the name of the parameter's type is used instead.
 	 */
-	export const inject = (name?: string): ParameterDecorator => {
+	export const inject = (service?: string | ServiceClass): ParameterDecorator => {
 		return function (target, propertyKey, parameterIndex) {
 			const services = Reflect.getMetadata(Symbols.services, target, propertyKey!) ?? [];
-			const types = Reflect.getMetadata('design:paramtypes', target, propertyKey!) ?? [];
+			const types: Function[] =
+				Reflect.getMetadata('design:paramtypes', target, propertyKey!) ?? [];
+			const name = isString(service) ? service : (service?.name ?? types[parameterIndex].name);
 
 			services.push({
-				name: name ?? types[parameterIndex].name,
+				name,
 				index: parameterIndex
 			});
 
