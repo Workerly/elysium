@@ -19,6 +19,7 @@ import type { DatabaseConnectionProps } from './database';
 import type { Route } from './http';
 import type { ModuleClass } from './module';
 import type { RedisConnectionProps } from './redis';
+import type { WampClientProps } from './wamp';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { parseArgs } from 'node:util';
@@ -35,6 +36,7 @@ import { applyMiddlewares } from './middleware';
 import { Redis } from './redis';
 import { Service } from './service';
 import { deepMerge, Symbols } from './utils';
+import { Wamp } from './wamp';
 
 /**
  * An application plugin, consisting of a function that returns an Elysia instance.
@@ -63,6 +65,21 @@ export type AppProps = {
 		 * The port to listen on.
 		 */
 		port?: number;
+	};
+
+	/**
+	 * The wamp client configuration for the app.
+	 */
+	wamp?: {
+		/**
+		 * The default connection name.
+		 */
+		default: string;
+
+		/**
+		 * The list of connections.
+		 */
+		connections: Record<string, WampClientProps>;
 	};
 
 	/**
@@ -217,7 +234,10 @@ export abstract class Application extends InteractsWithConsole {
 
 		Service.instance('elysium.app', this);
 
-		const { database, redis } = Reflect.getMetadata(Symbols.app, this.constructor) as AppProps;
+		const { database, redis, wamp } = Reflect.getMetadata(
+			Symbols.app,
+			this.constructor
+		) as AppProps;
 
 		if (redis) {
 			for (const connectionName in redis.connections) {
@@ -236,6 +256,16 @@ export abstract class Application extends InteractsWithConsole {
 
 			if (Database.connectionExists(database.default)) {
 				Database.setDefaultConnection(database.default);
+			}
+		}
+
+		if (wamp) {
+			for (const connectionName in wamp.connections) {
+				Wamp.registerConnection(connectionName, wamp.connections[connectionName]);
+			}
+
+			if (Wamp.connectionExists(wamp.default)) {
+				Wamp.setDefaultConnection(wamp.default);
 			}
 		}
 

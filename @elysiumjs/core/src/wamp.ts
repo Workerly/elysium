@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Class } from 'type-fest';
+import type { Class, Primitive } from 'type-fest';
+
+import { setInterval } from 'node:timers/promises';
 
 import { Elysia } from 'elysia';
 import { omit } from 'radash';
@@ -67,6 +69,18 @@ export type WampSubscriptionOptions = Omit<WampRegistrationOptions, 'invoke'>;
  */
 export type WampProps = {
 	/**
+	 * The name of the connection to use. This connection must be registered in the application properties.
+	 * @default 'default'
+	 */
+	connection?: string;
+};
+
+/**
+ * Properties required when declaring a WAMP client in the application properties.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type WampClientProps = {
+	/**
 	 * The URL to the WAMP server.
 	 */
 	url: string;
@@ -100,6 +114,131 @@ export type WampProps = {
 	 * An array of supported authentication methods.
 	 */
 	authmethods?: string[];
+
+	/**
+	 * Callback for handling WAMP authentication challenges.
+	 * @param method The authentication method.
+	 * @param extra Authentication metadata.
+	 */
+	onChallenge?(method: string, extra: any): string | null;
+
+	/**
+	 * Callback for handling the WAMP connection open event.
+	 */
+	onOpen?(): void;
+
+	/**
+	 * Callback for handling the WAMP connection close event.
+	 */
+	onClose?(): void;
+
+	/**
+	 * Callback for handling the WAMP connection error event.
+	 */
+	onError?(): void;
+
+	/**
+	 * Callback for handling the WAMP connection reconnect event.
+	 */
+	onReconnect?(): void;
+
+	/**
+	 * Callback for handling the WAMP connection reconnect success event.
+	 */
+	onReconnectSuccess?(): void;
+};
+
+export type WampClient = {
+	/**
+	 * Disconnects from WAMP server. Clears all queues, subscriptions and calls.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 */
+	disconnect(): Promise<void>;
+
+	subscribe(
+		topic: string,
+		handler: WampSubscriptionHandler,
+		options?: WampSubscriptionOptions
+	): Promise<{
+		topic: string;
+		requestId: string;
+		subscriptionId: string;
+		subscriptionKey: string;
+	}>;
+
+	unsubscribe(
+		subscriptionIdOrKey: string,
+		handler?: WampSubscriptionHandler
+	): Promise<{
+		topic: string;
+		requestId: string;
+	}>;
+
+	publish(
+		topic: string,
+		params?:
+			| Primitive
+			| Array<any>
+			| Record<string, Primitive | Array<any>>
+			| { argsList: Array<any>; argsDict: Record<string, any> },
+		options?: {
+			exclude?: number | number[];
+			exclude_authid?: string | string[];
+			exclude_authrole?: string | string[];
+			eligible?: number | number[];
+			eligible_authid?: string | string[];
+			eligible_authrole?: string | string[];
+			exclude_me?: boolean;
+			disclose_me?: boolean;
+			ppt_scheme?: string;
+			ppt_serializer?: string;
+			ppt_cipher?: string;
+			ppt_keyid?: string;
+		}
+	): Promise<{
+		topic: string;
+		requestId: string;
+		publicationId: string;
+	}>;
+
+	call(
+		procedure: string,
+		params?:
+			| Primitive
+			| Array<any>
+			| Record<string, Primitive | Array<any>>
+			| { argsList: Array<any>; argsDict: Record<string, any> },
+		options?: {
+			disclose_me?: boolean;
+			progress_callback?(args: { argsList: Array<any>; argsDict: Record<string, any> }): void;
+			timeout?: number;
+			ppt_scheme?: string;
+			ppt_serializer?: string;
+			ppt_cipher?: string;
+			ppt_keyid?: string;
+		}
+	): Promise<{
+		details: Record<string, any>;
+		argsList?: Array<any>;
+		argsDict?: Record<string, any>;
+	}>;
+
+	cancel(requestId: string, options?: { mode?: 'kill' | 'killnowait' | 'skip' }): true;
+
+	register(
+		topic: string,
+		handler: WampRegistrationHandler,
+		options?: WampRegistrationOptions
+	): Promise<{
+		topic: string;
+		requestId: string;
+		registrationId: string;
+	}>;
+
+	unregister(registrationId: string): Promise<{
+		topic: string;
+		requestId: string;
+	}>;
 };
 
 /**
@@ -205,6 +344,101 @@ type WampSubscription = {
 
 export namespace Wamp {
 	/**
+	 * Creates a service name for a WAMP connection.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the connection.
+	 * @returns A service name for the connection.
+	 */
+	const getConnectionName = (name: string) => {
+		return `wamp.connection.${name}`;
+	};
+
+	/**
+	 * Retrieves the client for a WAMP connection.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the connection.
+	 * @returns The Wampy client for the connection with the given name.
+	 */
+	export const getConnection = (name: string) => {
+		if (!Service.exists(getConnectionName(name))) {
+			// TODO: Use logger service here
+			console.error(
+				`No WAMP connection with name ${name} found. Please make sure to register the connection before using it.`
+			);
+			process.exit(1);
+		}
+
+		return Service.get<WampClient>(getConnectionName(name))!;
+	};
+
+	/**
+	 * Creates and registers a new WAMP client.
+	 *
+	 * This will make the registered connection available for dependency injection with
+	 * the key `wamp.connection.{name}`, where `{name}` is replaced with the given name.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 *
+	 * @param name The name of the connection.
+	 * @param config The configuration for the WAMP client.
+	 * @returns The newly created and configured WAMP client for the given connection.
+	 */
+	export const registerConnection = (name: string, config: WampClientProps) => {
+		if (Service.exists(getConnectionName(name))) {
+			// TODO: Use logger service here
+			console.error(
+				`A WAMP connection with name ${name} already exists. Please ensure to register a new connection before overwriting it.`
+			);
+			process.exit(1);
+		}
+
+		const client = new Wampy(config.url, {
+			ws: WampWebsocket,
+			...omit(config, ['url']),
+			onError() {
+				config.onError?.();
+				// TODO: Add more details like controller name and url
+				Event.emit('elysium:error', new Error(`An error occurred in WAMP connection ${name}`));
+			}
+		});
+
+		client.connect();
+
+		return Service.instance<WampClient>(getConnectionName(name), client);
+	};
+
+	/**
+	 * Checks if a WAMP connection with the given name exists.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the connection.
+	 * @returns `true` if the connection exists, `false` otherwise.
+	 */
+	export const connectionExists = (name: string) => {
+		return Service.exists(getConnectionName(name));
+	};
+
+	/**
+	 * Retrieves the default WAMP connection.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @returns The default WAMP connection.
+	 */
+	export const getDefaultConnection = () => {
+		return getConnection('default');
+	};
+
+	/**
+	 * Sets the default WAMP connection.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param name The name of the connection to set as default.
+	 * @returns The default WAMP connection.
+	 */
+	export const setDefaultConnection = (name: string) => {
+		const serviceName = getConnectionName('default');
+		Service.remove(serviceName);
+		return Service.instance<WampClient>(serviceName, getConnection(name));
+	};
+
+	/**
 	 * Marks a class as a WAMP controller.
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 * @param options The decorator options.
@@ -213,67 +447,50 @@ export namespace Wamp {
 		return function (target: Class<any>) {
 			async function handleWamp(): Promise<Elysia> {
 				// TODO: Use the logger service here
-				console.log(`Registering Wamp route for ${options.url} using ${target.name}`);
+				console.log(
+					`Registering Wamp controller for connection ${options.connection} using ${target.name}`
+				);
 				await nextTick();
 
 				const controller = Service.make(target);
 
 				const metadata = Reflect.getMetadata(Symbols.wamp, target) ?? {};
 
-				const w = new Wampy(options.url, {
-					ws: WampWebsocket,
-					...omit(options, ['url']),
-					onChallenge: metadata.challenge?.bind(controller),
-					onClose: metadata.close?.bind(controller),
-					onError() {
-						metadata.error?.call(controller);
-						// TODO: Add more details like controller name and url
-						Event.emit('elysium:error', new Error('Wamp connection error'));
-					},
-					onReconnect: metadata.reconnect?.bind(controller),
-					onReconnectSuccess: metadata.reconnectSuccess?.bind(controller)
-				});
+				const w = Wamp.getConnection(options.connection ?? 'default');
 
 				const app = new Elysia();
 
 				app.onStart(async (_) => {
-					try {
-						await w.connect();
-						metadata.open?.call(controller);
+					const registrations: WampRegistration[] = metadata.registrations ?? [];
+					const subscriptions: WampSubscription[] = metadata.subscriptions ?? [];
 
-						const registrations: WampRegistration[] = metadata.registrations ?? [];
-						const subscriptions: WampSubscription[] = metadata.subscriptions ?? [];
+					for (const registration of registrations) {
+						w.register(
+							registration.topic,
+							registration.handler.bind(controller),
+							registration.options
+						).then((r: { topic: string; requestId: string; registrationId: string }) => {
+							// TODO: Use the logger service here
+							console.log(`Registered ${registration.topic} with id ${r.registrationId}`);
+						});
+					}
 
-						for (const registration of registrations) {
-							w.register(
-								registration.topic,
-								registration.handler.bind(controller),
-								registration.options
-							).then((r: { topic: string; requestId: string; registrationId: string }) => {
+					for (const subscription of subscriptions) {
+						w.subscribe(
+							subscription.topic,
+							subscription.handler.bind(controller),
+							subscription.options
+						).then(
+							(s: {
+								topic: string;
+								requestId: string;
+								subscriptionId: string;
+								subscriptionKey: string;
+							}) => {
 								// TODO: Use the logger service here
-								console.log(`Registered ${registration.topic} with id ${r.registrationId}`);
-							});
-						}
-
-						for (const subscription of subscriptions) {
-							w.subscribe(
-								subscription.topic,
-								subscription.handler.bind(controller),
-								subscription.options
-							).then(
-								(s: {
-									topic: string;
-									requestId: string;
-									subscriptionId: string;
-									subscriptionKey: string;
-								}) => {
-									// TODO: Use the logger service here
-									console.log(`Subscribed ${subscription.topic} with id ${s.subscriptionId}`);
-								}
-							);
-						}
-					} catch (error) {
-						// noop
+								console.log(`Subscribed ${subscription.topic} with id ${s.subscriptionId}`);
+							}
+						);
 					}
 				});
 
@@ -322,102 +539,6 @@ export namespace Wamp {
 				handler: descriptor.value as WampRegistrationHandler
 			});
 
-			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
-		};
-	};
-
-	/**
-	 * Marks a method as the WAMP "challenge" event handler.
-	 *
-	 * This decorator should be used on a WAMP controller method. Only one "challenge" event handler
-	 * can be defined per WAMP controller.
-	 *
-	 * @author Axel Nana <axel.nana@workbud.com>
-	 */
-	export const onChallenge = (): MethodDecorator => {
-		return function (target, _propertyKey, descriptor) {
-			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-			metadata.challenge = descriptor.value;
-			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
-		};
-	};
-
-	/**
-	 * Marks a method as the WAMP "open" event handler.
-	 *
-	 * This decorator should be used on a WAMP controller method. Only one "open" event handler
-	 * can be defined per WAMP controller.
-	 *
-	 * @author Axel Nana <axel.nana@workbud.com>
-	 */
-	export const onOpen = (): MethodDecorator => {
-		return function (target, _propertyKey, descriptor) {
-			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-			metadata.open = descriptor.value;
-			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
-		};
-	};
-
-	/**
-	 * Marks a method as the WAMP "close" event handler.
-	 *
-	 * This decorator should be used on a WAMP controller method. Only one "close" event handler
-	 * can be defined per WAMP controller.
-	 *
-	 * @author Axel Nana <axel.nana@workbud.com>
-	 */
-	export const onClose = (): MethodDecorator => {
-		return function (target, _propertyKey, descriptor) {
-			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-			metadata.close = descriptor.value;
-			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
-		};
-	};
-
-	/**
-	 * Marks a method as the WAMP "error" event handler.
-	 *
-	 * This decorator should be used on a WAMP controller method. Only one "error" event handler
-	 * can be defined per WAMP controller.
-	 *
-	 * @author Axel Nana <axel.nana@workbud.com>
-	 */
-	export const onError = (): MethodDecorator => {
-		return function (target, _propertyKey, descriptor) {
-			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-			metadata.error = descriptor.value;
-			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
-		};
-	};
-
-	/**
-	 * Marks a method as the WAMP "reconnect" event handler.
-	 *
-	 * This decorator should be used on a WAMP controller method. Only one "reconnect" event handler
-	 * can be defined per WAMP controller.
-	 *
-	 * @author Axel Nana <axel.nana@workbud.com>
-	 */
-	export const onReconnect = (): MethodDecorator => {
-		return function (target, _propertyKey, descriptor) {
-			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-			metadata.reconnect = descriptor.value;
-			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
-		};
-	};
-
-	/**
-	 * Marks a method as the WAMP "reconnectSuccess" event handler.
-	 *
-	 * This decorator should be used on a WAMP controller method. Only one "reconnectSuccess" event handler
-	 * can be defined per WAMP controller.
-	 *
-	 * @author Axel Nana <axel.nana@workbud.com>
-	 */
-	export const onReconnectSuccess = (): MethodDecorator => {
-		return function (target, _propertyKey, descriptor) {
-			const metadata = Reflect.getMetadata(Symbols.wamp, target.constructor) ?? {};
-			metadata.reconnectSuccess = descriptor.value;
 			Reflect.defineMetadata(Symbols.wamp, metadata, target.constructor);
 		};
 	};

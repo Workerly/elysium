@@ -342,7 +342,7 @@ export namespace Redis {
 		if (!Service.exists(getConnectionName(name))) {
 			// TODO: Use logger service here
 			console.error(
-				`No connection with name ${name} found. Please make sure to register the connection before using it.`
+				`No Redis connection with name ${name} found. Please make sure to register the connection before using it.`
 			);
 			process.exit(1);
 		}
@@ -352,10 +352,11 @@ export namespace Redis {
 
 	/**
 	 * Creates and registers a new redis connection.
-	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * This will make the registered connection available for dependency injection with
 	 * the key `redis.connection.{name}`, where `{name}` is replaced with the given name.
+	 *
+	 * @author Axel Nana <axel.nana@workbud.com>
 	 *
 	 * @param name The name of the connection.
 	 * @param config The configuration for the redis connection.
@@ -364,7 +365,7 @@ export namespace Redis {
 	export const registerConnection = (name: string, config: RedisConnectionProps) => {
 		if (Service.exists(getConnectionName(name))) {
 			// TODO: Use logger service here
-			console.error(`A connection with the name ${name} has already been registered.`);
+			console.error(`A Redis connection with the name ${name} has already been registered.`);
 			process.exit(1);
 		}
 
