@@ -22,7 +22,7 @@ export class CerberusMiddleware extends Middleware {
 	public async onBeforeHandle(ctx: Context) {
 		const config = Application.instance.getConfig<CerberusConfig>('elysium:cerberus');
 		if (config === null) {
-			throw ctx.error(500, 'Cerberus middleware is not configured');
+			throw ctx.status(500, 'Cerberus middleware is not configured');
 		}
 
 		const subject = await config.getSubject(ctx);

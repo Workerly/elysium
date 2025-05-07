@@ -334,7 +334,7 @@ export namespace Http {
 		return function (target: Class<any>) {
 			async function handleHttp(): Promise<ElysiaApp> {
 				// TODO: Use the logger service here
-				console.log(`Registering HTTP route for ${props.path} using ${target.name}`);
+				console.log(`Registering HTTP controller for ${props.path} using ${target.name}`);
 				await nextTick();
 
 				props = assign({ path: '/', scope: HttpControllerScope.SERVER, tags: [] }, props);
@@ -480,7 +480,7 @@ export namespace Http {
 									return await handler(...(await getParameters(c)));
 								}
 
-								throw c.error(400, 'Invalid request body');
+								throw c.status(400, 'Invalid request body');
 							};
 						}
 
@@ -503,7 +503,7 @@ export namespace Http {
 						config: {},
 						async transform(c) {
 							if (isValidator && !(await route.body!.validator!.authorize(c as Context))) {
-								throw c.error(401, 'Unauthorized');
+								throw c.status(401, 'Unauthorized');
 							}
 
 							return executeMiddlewareChain(mi, c, 'onTransform');

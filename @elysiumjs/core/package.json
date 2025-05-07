@@ -26,9 +26,9 @@
 	"module": "index.ts",
 	"type": "module",
 	"dependencies": {
-		"@elysiajs/swagger": "^1.2.2",
-		"cache-manager": "^6.4.2",
-		"cacheable": "^1.8.10",
+		"@elysiajs/swagger": "^1.3.0",
+		"cache-manager": "^6.4.3",
+		"cacheable": "^1.9.0",
 		"drizzle-orm": "0.43.1-4aa795a",
 		"elysia": "latest",
 		"radash": "^12.1.0",
@@ -37,7 +37,7 @@
 	},
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^4.4.1",
-		"type-fest": "^4.40.1",
+		"type-fest": "^4.41.0",
 		"@types/bun": "latest"
 	},
 	"peerDependencies": {

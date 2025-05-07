@@ -24,7 +24,7 @@ class AbilityMiddleware extends Middleware<
 	public async onBeforeHandle(ctx: Context) {
 		const ability = ctx['elysium:cerberus'] as ReturnType<typeof defineAbility>;
 		if (ability === undefined) {
-			throw ctx.error(500, 'Cerberus middleware is not configured');
+			throw ctx.status(500, 'Cerberus middleware is not configured');
 		}
 
 		const [method, action, resource] = this.guards;
@@ -33,7 +33,7 @@ class AbilityMiddleware extends Middleware<
 			return;
 		}
 
-		throw ctx.error(403, 'Forbidden');
+		throw ctx.status(403, 'Forbidden');
 	}
 }
 
