@@ -1,8 +1,8 @@
 {
 	"name": "@elysiumjs/cerberus",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"license": "Apache-2.0",
-	"description": "A super-charged web framework for Bun, built on top of ElysiaJS.",
+	"description": "Ability-based roles and permissions layer for Elysium.js apps.",
 	"private": false,
 	"author": {
 		"name": "Axel Nana",

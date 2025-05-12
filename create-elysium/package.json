@@ -2,7 +2,7 @@
 	"name": "create-elysium",
 	"version": "0.1.8",
 	"license": "Apache-2.0",
-	"description": "A super-powered web framework built on top of Bun and Elysia.",
+	"description": "Bootstrap you next Elysium.js app!",
 	"author": {
 		"name": "Axel Nana",
 		"email": "axel.nana@workbud.com"
