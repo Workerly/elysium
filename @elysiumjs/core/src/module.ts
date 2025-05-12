@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import type { Class } from 'type-fest';
-import type { Route } from './http';
+import type { ElysiaApp, Route } from './http';
 
 import { Elysia } from 'elysia';
 import { assign } from 'radash';
@@ -30,6 +30,12 @@ export type ModuleProps = {
 	 * The list of controllers provided by the module.
 	 */
 	controllers?: Class<any>[];
+
+	/**
+	 * The base path for all the controllers registered by this module.
+	 * This value will be prefixed to each controllers path.
+	 */
+	prefix?: Route;
 };
 
 /**
@@ -52,14 +58,14 @@ export abstract class Module {
 	 */
 	public static register(options: ModuleProps = {}) {
 		return function (target: ModuleClass) {
-			async function handleModule(m: Module): Promise<Elysia<Route>> {
+			async function handleModule(m: Module): Promise<ElysiaApp> {
 				// TODO: Use the logger service here
 				console.log(`Registering module ${target.name}`);
 				await nextTick();
 
 				const props = assign({ controllers: [] }, options) as Required<ModuleProps>;
 
-				const plugin: Elysia<Route> = new Elysia({ name: target.name });
+				const plugin: ElysiaApp = new Elysia({ name: target.name, prefix: options.prefix });
 				plugin.decorate('module', m);
 
 				const middlewares = Reflect.getMetadata(Symbols.middlewares, target) ?? [];
@@ -70,7 +76,7 @@ export abstract class Module {
 					if (app === undefined) {
 						// TODO: Use the logger service here
 						console.error(
-							`Invalid controller class ${controller.name} registered in module ${target.name}. Ensure that you either used the @http(), or @websocket() decorators on the controller.`
+							`Invalid controller class ${controller.name} registered in module ${target.name}. Ensure that you either used the @Http.controller(), the @Websocket.controller(), or the @Wamp.controller() decorators on the class.`
 						);
 						process.exit(1);
 					} else {
