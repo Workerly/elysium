@@ -21,7 +21,7 @@ import { Middleware } from '@elysiumjs/core';
 class AbilityMiddleware extends Middleware<
 	['can' | 'cannot', Ability['action'], Ability['resource']]
 > {
-	public async onBeforeHandle(ctx: Context) {
+	public override async onBeforeHandle(ctx: Context) {
 		const ability = ctx['elysium:cerberus'] as ReturnType<typeof defineAbility>;
 		if (ability === undefined) {
 			throw ctx.status(500, 'Cerberus middleware is not configured');
@@ -38,10 +38,20 @@ class AbilityMiddleware extends Middleware<
 }
 
 export namespace Cerberus {
+	/**
+	 * Allows to run the request only if the requester has the given ability.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param ability The required ability the requester needs to have before to execute the request.
+	 */
 	export const can = (ability: Ability): MethodDecorator & ClassDecorator => {
 		return Middleware.register(AbilityMiddleware.guards(['can', ability.action, ability.resource]));
 	};
 
+	/**
+	 * Allows to run the request only if the requester DOESN'T HAVE the given ability
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param ability The required ability the request needs to NOT have before the execute the request.
+	 */
 	export const cannot = (ability: Ability): MethodDecorator & ClassDecorator => {
 		return Middleware.register(
 			AbilityMiddleware.guards(['cannot', ability.action, ability.resource])

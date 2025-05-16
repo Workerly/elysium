@@ -18,11 +18,20 @@ import type { CerberusConfig } from './utils';
 import { defineAbility } from '@casl/ability';
 import { Application, Middleware } from '@elysiumjs/core';
 
+/**
+ * Cerberus Middleware class.
+ *
+ * This middleware can only be applied on the application, the module, or the HTTP controller. It is
+ * used to apply the required metadata on the request context, so every routes after him can use
+ * ability checker decorators through `Cerberus.can()` and `Cerberus.cannot()`.
+ *
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
 export class CerberusMiddleware extends Middleware {
-	public async onBeforeHandle(ctx: Context) {
+	public override async onBeforeHandle(ctx: Context) {
 		const config = Application.instance.getConfig<CerberusConfig>('elysium:cerberus');
 		if (config === null) {
-			throw ctx.status(500, 'Cerberus middleware is not configured');
+			throw ctx.status(500, 'Cerberus configuration not provided in the application');
 		}
 
 		const subject = await config.getSubject(ctx);

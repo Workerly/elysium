@@ -1,6 +1,6 @@
 # @elysiumjs/cerberus
 
-Permission and capability management for Elysium applications.
+Permission and capability management for Elysium.js applications.
 
 ## Installation
 
