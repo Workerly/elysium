@@ -14,8 +14,6 @@
 
 import type { Class, Primitive } from 'type-fest';
 
-import { setInterval } from 'node:timers/promises';
-
 import { Elysia } from 'elysia';
 import { omit } from 'radash';
 // @ts-expect-error The Wampy type definitions are not up to date
@@ -402,7 +400,33 @@ export namespace Wamp {
 			}
 		});
 
-		client.connect();
+		const maxRetries = config.maxRetries ?? 5;
+		const retryInterval = config.retryInterval ?? 5000;
+		let retryCount = 0;
+
+		const tryConnect = async () => {
+			try {
+				await client.connect();
+			} catch (e) {
+				console.error(
+					`Failed to connect to WAMP server (attempt ${retryCount + 1}/${maxRetries}):`,
+					e
+				);
+
+				if (retryCount < maxRetries) {
+					retryCount++;
+					setTimeout(tryConnect, retryInterval);
+				} else {
+					console.error(`Max retry attempts (${maxRetries}) reached. Giving up.`);
+					Event.emit(
+						'elysium:error',
+						new Error(`Failed to establish WAMP connection ${name} after ${maxRetries} attempts`)
+					);
+				}
+			}
+		};
+
+		tryConnect();
 
 		return Service.instance<WampClient>(getConnectionName(name), client);
 	};
