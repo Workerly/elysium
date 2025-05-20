@@ -1,0 +1,43 @@
+{
+	"name": "@elysiumjs/heracles",
+	"version": "0.4.0",
+	"description": "Background job processing system for Elysium.js",
+	"main": "index.ts",
+	"bin": {
+		"heracles": "./dist/bin/cli.js"
+	},
+	"scripts": {
+		"build:cli": "bun build ./bin/cli.ts --outdir ./dist/bin --target bun -e @elysiumjs/heracles -e @elysiumjs/core",
+		"test": "bun test",
+		"dev": "bun --watch src/index.ts",
+		"clean": "rimraf dist",
+		"format": "prettier --write 'src/**/*.{ts,tsx}'",
+		"prepublishOnly": "bun run clean && bun run build:cli"
+	},
+	"keywords": [
+		"elysium",
+		"job",
+		"queue",
+		"worker",
+		"background",
+		"processing",
+		"heracles"
+	],
+	"author": "Workbud Technologies Inc.",
+	"license": "Apache-2.0",
+	"dependencies": {
+		"@elysiumjs/core": "latest",
+		"commander": "^13.1.0",
+		"radash": "^12.1.0",
+		"reflect-metadata": "^0.2.2"
+	},
+	"devDependencies": {
+		"bun-types": "^1.2.13",
+		"prettier": "^3.5.3",
+		"rimraf": "^6.0.1",
+		"type-fest": "^4.41.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5.8.3"
+	}
+}
