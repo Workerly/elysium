@@ -66,7 +66,7 @@ export abstract class Module {
 				const props = assign({ controllers: [] }, options) as Required<ModuleProps>;
 
 				const plugin: ElysiaApp = new Elysia({ name: target.name, prefix: options.prefix });
-				plugin.decorate('module', m);
+				plugin.resolve({ as: 'local' }, () => ({ module: m }));
 
 				const middlewares = Reflect.getMetadata(Symbols.middlewares, target) ?? [];
 				applyMiddlewares(middlewares, plugin);

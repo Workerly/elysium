@@ -1,13 +1,10 @@
 {
 	"name": "@elysiumjs/core",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"license": "Apache-2.0",
 	"description": "A super-charged web framework for Bun, built on top of ElysiaJS.",
 	"private": false,
-	"author": {
-		"name": "Axel Nana",
-		"email": "axel.nana@workbud.com"
-	},
+	"author": "Workbud Technologies Inc.",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Workerly/elysium"

@@ -346,9 +346,9 @@ export namespace Http {
 
 				if (props.scope === HttpControllerScope.SERVER) {
 					const controller = Service.make(target);
-					app.decorate('controller', () => controller);
+					app.resolve({ as: 'local' }, () => ({ controller: () => controller }));
 				} else if (props.scope === HttpControllerScope.REQUEST) {
-					app.decorate('controller', () => Service.make(target));
+					app.resolve({ as: 'local' }, () => ({ controller: () => Service.make(target) }));
 				}
 
 				const onRequest = Reflect.getMetadata('http:onRequest', target) ?? {};
