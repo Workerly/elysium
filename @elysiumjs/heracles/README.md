@@ -2,13 +2,13 @@
 
 > Robust background job processing for Elysium.js applications
 
-Heracles is a powerful background job processing system for Elysium.js applications. It provides a flexible and scalable solution for running tasks in the background, managing queues, and distributing workloads across multiple workers.
+Heracles is a powerful background job processing system for Elysium.js applications. It provides a flexible and scalable solution for running tasks in the background, managing queues, and distributing workloads across multiple workers using Redis as the transport.
 
 ## Features
 
 - **Job queues**: Organize jobs into different queues with custom settings
-- **Transports**: Choose between thread-based or Redis-based job distribution
-- **Worker pool**: Efficiently distribute jobs across multiple workers
+- **Transports**: Abstract communication layer between queues and workers
+- **Worker pool**: Efficiently coordinate workers across multiple processes or servers
 - **Scheduling**: Schedule jobs to run at specific times
 - **Retries**: Automatically retry failed jobs with configurable backoff
 - **Prioritization**: Assign priorities to jobs within a queue
@@ -28,48 +28,62 @@ bun add @elysiumjs/heracles
 import { Job } from '@elysiumjs/heracles';
 
 @Job.register({
-  queue: 'emails',
-  maxRetries: 3,
-  retryDelay: 5000
+	queue: 'emails',
+	maxRetries: 3,
+	retryDelay: 5000
 })
 export class SendEmailJob extends Job {
-  constructor(private readonly email: string, private readonly subject: string, private readonly body: string) {
-    super();
-  }
+	constructor(
+		private readonly email: string,
+		private readonly subject: string,
+		private readonly body: string
+	) {
+		super();
+	}
 
-  protected async execute(): Promise<void> {
-    // Implementation for sending an email
-    console.log(`Sending email to ${this.email}: ${this.subject}`);
-    
-    // Simulate email sending
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log(`Email sent successfully to ${this.email}`);
-  }
+	protected async execute(): Promise<void> {
+		// Implementation for sending an email
+		console.log(`Sending email to ${this.email}: ${this.subject}`);
+
+		// Simulate email sending
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+
+		console.log(`Email sent successfully to ${this.email}`);
+	}
 }
 ```
 
 ### 2. Dispatch a Job
 
 ```typescript
-import { Queue } from '@elysiumjs/heracles';
+import { Queue, RedisTransport } from '@elysiumjs/heracles';
+
 import { SendEmailJob } from './jobs/send-email.job';
 
-// Get or create a queue
-const emailQueue = Queue.get('emails');
+// Configure the queue with Redis transport
+const emailQueue = Queue.get('emails', {
+	transport: RedisTransport,
+	transportOptions: {
+		connection: 'default'
+	}
+});
 
 // Dispatch a job
-await emailQueue.dispatch(SendEmailJob, ['user@example.com', 'Welcome!', 'Welcome to our platform!']);
+await emailQueue.dispatch(SendEmailJob, [
+	'user@example.com',
+	'Welcome!',
+	'Welcome to our platform!'
+]);
 
 // Dispatch with options
 await emailQueue.dispatch(
-  SendEmailJob, 
-  ['user@example.com', 'Welcome!', 'Welcome to our platform!'],
-  {
-    priority: 5,  // Higher priority (lower number)
-    scheduledFor: new Date(Date.now() + 60000),  // Run after 1 minute
-    maxRetries: 5  // Override max retries
-  }
+	SendEmailJob,
+	['user@example.com', 'Welcome!', 'Welcome to our platform!'],
+	{
+		priority: 5, // Higher priority (lower number)
+		scheduledFor: new Date(Date.now() + 60000), // Run after 1 minute
+		maxRetries: 5 // Override max retries
+	}
 );
 ```
 
@@ -78,25 +92,22 @@ await emailQueue.dispatch(
 Using the CLI:
 
 ```bash
-# Start 2 thread workers for the 'emails' queue with concurrency of 3 jobs per worker
-bun heracles worker:start --queues=emails --workers=2 --concurrency=3 --transport=thread
+# Start a Redis worker for the 'emails' queue with concurrency of 3 jobs
+bun heracles work --id worker-1 --queues=emails --concurrency=3 --redis=default
 
-# Start Redis workers
-bun heracles worker:start --queues=emails,notifications --workers=4 --transport=redis --redis=default
+# Start workers for multiple queues
+bun heracles work --id worker-2 --queues=emails,notifications --redis=default
 ```
 
 Or programmatically:
 
 ```typescript
-import { ThreadWorker, RedisWorker } from '@elysiumjs/heracles';
-
-// Create and start a thread worker
-const worker = new ThreadWorker(['emails', 'notifications']);
-await worker.start();
+import { RedisWorker } from '@elysiumjs/heracles';
 
 // Create and start a Redis worker
-const redisWorker = new RedisWorker('default');
-await redisWorker.start();
+const worker = new RedisWorker('default', { id: 'worker-1' });
+await worker.createQueue({ name: 'emails', concurrency: 3 });
+await worker.start();
 ```
 
 ## Configuration
@@ -105,55 +116,91 @@ await redisWorker.start();
 
 ```typescript
 const queue = Queue.get('emails', {
-  // Maximum number of concurrent jobs to process in this queue
-  concurrency: 5,
-  
-  // Maximum number of retries for failed jobs
-  maxRetries: 3,
-  
-  // Delay in milliseconds between retries
-  retryDelay: 5000,
-  
-  // Whether to pause processing when an error occurs
-  pauseOnError: false,
-  
-  // Transport for this queue (defaults to ThreadTransport)
-  transport: RedisTransport,
-  
-  // Transport-specific options
-  transportOptions: {
-    connection: 'default'
-  }
+	// Maximum number of concurrent jobs to process in this queue
+	concurrency: 5,
+
+	// Maximum number of retries for failed jobs
+	maxRetries: 3,
+
+	// Delay in milliseconds between retries
+	retryDelay: 5000,
+
+	// Whether to pause processing when an error occurs
+	pauseOnError: false,
+
+	// Redis transport configuration
+	transport: RedisTransport,
+
+	// Transport-specific options
+	transportOptions: {
+		connection: 'default'
+	}
 });
 ```
 
-### Redis Transport
+### Redis Transport Configuration
 
-To use the Redis transport, first configure a Redis connection in your Elysium.js application:
+Heracles uses Redis as its transport layer for job distribution, enabling distributed processing across multiple servers or processes. It uses Redis Streams for reliable message delivery and job coordination.
+
+#### 1. Configure Redis Connection
+
+First, configure a Redis connection in your Elysium.js application:
 
 ```typescript
 import { Redis } from '@elysiumjs/core';
 
 // Register a Redis connection
 Redis.registerConnection('default', {
-  url: 'redis://localhost:6379',
-  // Other Redis options
+	url: 'redis://localhost:6379'
+	// Other Redis options
 });
 ```
 
-Then use the Redis transport in your queues:
+#### 2. Configure Queues with Redis Transport
 
 ```typescript
 import { Queue, RedisTransport } from '@elysiumjs/heracles';
 
 const queue = Queue.get('emails', {
-  transport: RedisTransport,
-  transportOptions: {
-    connection: 'default',
-    keyPrefix: 'myapp:jobs',
-    statusTTL: 86400  // 24 hours
-  }
+	transport: RedisTransport,
+	transportOptions: {
+		connection: 'default', // Redis connection name
+		keyPrefix: 'myapp:jobs', // Prefix for Redis keys (default: 'elysium:heracles')
+		consumerGroup: 'workers', // Redis consumer group name (default: 'workers')
+		pollInterval: 1000, // Poll interval in ms (default: 1000)
+		statusTTL: 86400, // Job status TTL in seconds (default: 86400 - 24 hours)
+		cleanupCompletedJobs: true, // Auto-cleanup completed jobs (default: true)
+		completedJobRetention: 3600, // Time to retain completed jobs in seconds (default: 3600 - 1 hour)
+		maxStreamSize: 1000 // Maximum stream size (default: 1000)
+	}
 });
+```
+
+#### 3. Worker Configuration
+
+Configure workers to process jobs from Redis queues:
+
+```typescript
+import { RedisWorker } from '@elysiumjs/heracles';
+
+// Create a Redis worker with a unique ID
+const worker = new RedisWorker('default', {
+	id: 'worker-1', // Unique worker ID
+	consumerName: 'worker-1', // Unique consumer name (optional)
+	keyPrefix: 'myapp:jobs' // Use same prefix as queue configuration
+});
+
+// Configure queue settings
+await worker.createQueue({
+	name: 'emails',
+	concurrency: 5, // Process 5 jobs concurrently
+	maxRetries: 3, // Retry failed jobs up to 3 times
+	retryDelay: 5000, // Wait 5 seconds between retries
+	pauseOnError: false // Don't pause queue on error
+});
+
+// Start the worker
+await worker.start();
 ```
 
 ## Job Lifecycle
@@ -200,7 +247,7 @@ await queue.clear();
 The worker pool manages worker availability and distributes jobs using a round-robin algorithm:
 
 ```typescript
-import { WorkerPool, ThreadWorker } from '@elysiumjs/heracles';
+import { ThreadWorker, WorkerPool } from '@elysiumjs/heracles';
 
 // Get the worker pool instance
 const pool = WorkerPool.instance;
@@ -216,7 +263,7 @@ const emailWorkers = pool.getWorkersForQueue('emails');
 
 ## CLI Reference
 
-Heracles includes a CLI tool for managing workers:
+Heracles includes a CLI tool for managing workers and Redis maintenance:
 
 ```
 Usage: heracles [options] [command]
@@ -226,28 +273,46 @@ Options:
   -h, --help                            display help for command
 
 Commands:
-  worker:start [options]                Start workers for specific queues
-  status                                Show worker pool status
+  work [options]                        Start a Redis worker for specific queues
+  cleanup [options]                     Clean up Redis streams
   help [command]                        display help for command
 ```
 
 ### Start Workers
 
 ```
-Usage: heracles worker:start [options]
+Usage: heracles work [options]
 
-Start workers for specific queues
+Start a Redis worker for specific queues
 
 Options:
+  --id <ID>                   Unique identifier for this worker (required)
   -q, --queues <queues>       Comma-separated list of queues (default: "default")
-  -t, --transport <transport>  Transport type (thread|redis) (default: "thread")
   -c, --concurrency <count>   Number of concurrent jobs per worker (default: "1")
-  -w, --workers <count>       Number of workers to start (default: "1")
-  -r, --redis <n>             Redis connection name for Redis transport (default: "default")
+  -r, --redis <n>             Redis connection name (default: "default")
   --config <path>             Path to configuration file (default: "")
   --max-retries <count>       Maximum retries for failed jobs (default: "3")
   --retry-delay <ms>          Delay between retries in milliseconds (default: "5000")
   --pause-on-error            Pause queue when error occurs (default: false)
+  -h, --help                  display help for command
+```
+
+### Clean Up Redis Streams
+
+```
+Usage: heracles cleanup [options]
+
+Clean up Redis streams by removing completed and failed jobs
+
+Options:
+  -r, --redis <name>          Redis connection name (default: "default")
+  -q, --queues <queues>       Comma-separated list of queues (all if not specified)
+  -a, --all                   Remove all entries, not just completed ones (default: false)
+  -k, --keyprefix <prefix>    Redis key prefix (default: "elysium:heracles")
+  -t, --retention <seconds>   Time to retain completed jobs in seconds (default: "3600")
+  -m, --max <count>           Maximum stream size to trim to (default: "1000")
+  -s, --status-only           Only clean up job status keys, not stream entries (default: false)
+  --dry-run                   Show what would be removed without actually removing (default: false)
   -h, --help                  display help for command
 ```
 
