@@ -95,10 +95,14 @@ export abstract class Module {
 	/**
 	 * Hooks that are executed before the module is registered.
 	 */
-	public beforeRegister(): void {}
+	public beforeRegister(): Promise<void> {
+		return Promise.resolve();
+	}
 
 	/**
 	 * Hooks that are executed after the module is registered.
 	 */
-	public afterRegister(): void {}
+	public afterRegister(): Promise<void> {
+		return Promise.resolve();
+	}
 }

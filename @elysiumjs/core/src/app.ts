@@ -583,9 +583,9 @@ export abstract class Application extends InteractsWithConsole {
 
 			const module = Service.bind(moduleClass);
 
-			module.beforeRegister();
+			await module.beforeRegister();
 			this.#elysia.use(await plugin(module));
-			module.afterRegister();
+			await module.afterRegister();
 		}
 
 		Event.emit('elysium:server:after-init', this, this);
