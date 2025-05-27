@@ -6,9 +6,6 @@ node_modules
 examples
 bin
 
-**/thread.*.ts
-**/worker_pool.ts
-
 .gitignore
 .prettierignore
 .prettierrc
