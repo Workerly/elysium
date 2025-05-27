@@ -1,6 +1,6 @@
 {
 	"name": "@elysiumjs/heracles",
-	"version": "0.4.3",
+	"version": "0.4.4",
 	"description": "Background job processing system for Elysium.js",
 	"main": "index.ts",
 	"bin": {
@@ -26,7 +26,6 @@
 	"author": "Workbud Technologies Inc.",
 	"license": "Apache-2.0",
 	"dependencies": {
-		"@elysiumjs/core": "latest",
 		"commander": "^13.1.0",
 		"radash": "^12.1.0",
 		"reflect-metadata": "^0.2.2"
@@ -38,6 +37,7 @@
 		"type-fest": "^4.41.0"
 	},
 	"peerDependencies": {
+		"@elysiumjs/core": "latest",
 		"typescript": "^5.8.3"
 	}
 }
