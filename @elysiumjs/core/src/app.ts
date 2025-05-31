@@ -22,11 +22,11 @@ import type { RedisConnectionProps } from './redis';
 import type { WampClientProps } from './wamp';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { parseArgs } from 'node:util';
 
 import { swagger as swaggerPlugin } from '@elysiajs/swagger';
 import { Value } from '@sinclair/typebox/value';
 import { Elysia } from 'elysia';
+import { first } from 'radash';
 
 import { ConsoleFormat, InteractsWithConsole } from './console';
 import { Database } from './database';
@@ -303,24 +303,24 @@ export abstract class Application extends InteractsWithConsole {
 
 	/**
 	 * Hook that is executed when an error occurs.
-	 * @param e The error context.
+	 * @param _error The error context.
 	 * @returns Whether to continue the error propagation.
 	 */
-	protected async onError(e: ErrorContext): Promise<boolean> {
+	protected async onError(_error: ErrorContext): Promise<boolean> {
 		return true;
 	}
 
 	/**
 	 * Hook that is executed when the application starts.
-	 * @param elysia The Elysia instance.
+	 * @param _elysia The Elysia instance.
 	 */
-	protected async onStart(elysia: Elysia<Route>): Promise<void> {}
+	protected async onStart(_elysia: Elysia<Route>): Promise<void> {}
 
 	/**
 	 * Hook that is executed when the application stops.
-	 * @param elysia The Elysia instance.
+	 * @param _elysia The Elysia instance.
 	 */
-	protected async onStop(elysia: Elysia<Route>): Promise<void> {}
+	protected async onStop(_elysia: Elysia<Route>): Promise<void> {}
 
 	protected async run(): Promise<void> {
 		const argv = process.argv.slice(2);
@@ -335,12 +335,6 @@ export abstract class Application extends InteractsWithConsole {
 			switch (action) {
 				case 'serve': {
 					return this.commandServe();
-				}
-				case 'exec': {
-					const command = argv[1];
-					const args = argv.slice(2);
-
-					return this.commandExec(command, args);
 				}
 				case 'help': {
 					const command = argv[1];
@@ -367,14 +361,10 @@ export abstract class Application extends InteractsWithConsole {
 					this.commandList();
 					break;
 				}
-				case 'work': {
-					return this.commandWork(argv.slice(1));
-				}
 				default: {
-					console.error(`Invalid command: ${this.bold(action)}`);
+					const args = argv.slice(1);
 
-					this.commandDescribe();
-					break;
+					return this.commandExec(action, args);
 				}
 			}
 		}
@@ -389,62 +379,6 @@ export abstract class Application extends InteractsWithConsole {
 	 */
 	public getConfig<T>(key: keyof AppProps): T | null {
 		return Reflect.getMetadata(Symbols.app, this.constructor)?.[key] ?? null;
-	}
-
-	private async commandWork(argv: string[]) {
-		this.info('Starting worker process...');
-
-		// Parse queue arguments
-		const { values } = parseArgs({
-			args: argv,
-			options: {
-				queue: {
-					type: 'string',
-					multiple: true,
-					default: ['default'],
-					short: 'q'
-				},
-				concurrency: {
-					type: 'string',
-					default: '1',
-					short: 'c'
-				},
-				['max-retries']: {
-					type: 'string',
-					default: '5',
-					short: 'r'
-				},
-				['retry-delay']: {
-					type: 'string',
-					default: '5000',
-					short: 'd'
-				},
-				['pause-on-error']: {
-					type: 'boolean',
-					default: false,
-					short: 'p'
-				}
-			}
-		});
-
-		// Import worker-specific code
-		const { Worker } = await import('./worker');
-
-		// Start the worker with the specified queues
-		const queues = values.queue
-			.map((queue) => queue.split(','))
-			.reduce((acc, queues) => acc.concat(queues), []);
-
-		const worker = Worker.spawn(self as unknown as globalThis.Worker, queues, {
-			concurrency: parseInt(values.concurrency, 10),
-			maxRetries: parseInt(values['max-retries'], 10),
-			retryDelay: parseInt(values['retry-delay'], 10),
-			pauseOnError: values['pause-on-error']
-		});
-
-		this.success(
-			`Worker process ${this.format(worker.id, ConsoleFormat.GREEN)} started with queues: ${queues.map((q) => this.format(q, ConsoleFormat.CYAN)).join(', ')}`
-		);
 	}
 
 	/**
@@ -508,7 +442,7 @@ export abstract class Application extends InteractsWithConsole {
 		}));
 
 		if (swagger) {
-			this.#elysia.use(await swaggerPlugin(swagger));
+			this.#elysia.use(swaggerPlugin(swagger));
 		}
 
 		if (plugins && plugins.length > 0) {
@@ -606,19 +540,21 @@ export abstract class Application extends InteractsWithConsole {
 			`${this.bold('Usage:')} ${this.format('styx', ConsoleFormat.MAGENTA)} <command> [options]`
 		);
 
-		this.section(this.bold('Commands:'));
+		this.section(this.bold('Core Commands:'));
+		this.newLine();
 		this.commandDescription('serve', '', 'Starts the server.');
-		this.commandDescription('exec', '<command> [options]', 'Executes a command.');
-		this.commandDescription('work', '[options]', 'Starts a worker process.');
 		this.commandDescription('help', '<command>', 'Displays help for a command.');
-		this.commandDescription('list', '', 'List all available commands.');
+		this.commandDescription('list', '', 'List all available application commands.');
+
+		this.section(this.bold('Application Commands:'));
+		this.commandList();
 	}
 
 	private commandList() {
 		const { commands } = Reflect.getMetadata(Symbols.app, this.constructor) as AppProps;
 
 		const groups = (commands ?? []).reduce((acc, commandClass) => {
-			const groupKey = commandClass.command.split(':')[0];
+			const groupKey: string = first(commandClass.command.split(':'))!;
 			const group = acc.get(groupKey) ?? [];
 			group.push(commandClass);
 			acc.set(groupKey, group);
