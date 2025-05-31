@@ -743,20 +743,7 @@ export class CommandSpinner extends InteractsWithConsole {
 	/**
 	 * The custom frames for the spinner animation.
 	 */
-	readonly #frames: string[] = [
-		'🕐',
-		'🕑',
-		'🕒',
-		'🕓',
-		'🕔',
-		'🕕',
-		'🕖',
-		'🕗',
-		'🕘',
-		'🕙',
-		'🕚',
-		'🕛'
-	];
+	readonly #frames: string[] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 	/**
 	 * The delay between frames in milliseconds.

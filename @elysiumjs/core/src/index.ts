@@ -15,31 +15,31 @@
 import './macros';
 
 export { type Elysia, type TSchema, type Static, t } from 'elysia';
-export { type AppContext, type ElysiumPlugin, Application } from './src/app';
-export { Cache } from './src/cache';
+export { type AppContext, type ElysiumPlugin, Application } from './app';
+export { Cache } from './cache';
 export {
 	type CommandArgumentProps,
 	type CommandClass,
 	Command,
 	CommandArgumentType
-} from './src/command';
-export { ConsoleFormat, InteractsWithConsole } from './src/console';
-export { Database } from './src/database';
-export { Env } from './src/env';
-export { type EventData, type EventHandler, Event } from './src/event';
-export { type Context, type Route, HttpControllerScope, Http } from './src/http';
-export { Job } from './src/job';
-export { Middleware } from './src/middleware';
-export { type ModelClass, Model, Tenancy } from './src/model';
-export { type ModuleClass, Module } from './src/module';
-export { Redis } from './src/redis';
+} from './command';
+export { ConsoleFormat, InteractsWithConsole } from './console';
+export { Database } from './database';
+export { Env } from './env';
+export { type EventData, type EventHandler, Event } from './event';
+export { type Context, type Route, HttpControllerScope, Http } from './http';
+export { Job } from './job';
+export { Middleware } from './middleware';
+export { type ModelClass, Model, Tenancy } from './model';
+export { type ModuleClass, Module } from './module';
+export { Redis } from './redis';
 export {
 	type IdType,
 	type RepositoryInterface,
 	type RepositoryClass,
 	Repository
-} from './src/repository';
-export { ServiceScope, Service } from './src/service';
+} from './repository';
+export { ServiceScope, Service } from './service';
 export {
 	type WampRegistrationOptions,
 	type WampSubscriptionOptions,
@@ -49,6 +49,6 @@ export {
 	type WampRegistrationHandler,
 	type WampSubscriptionHandler,
 	Wamp
-} from './src/wamp';
-export { type WS, type WSError, Websocket } from './src/websocket';
-export { type QueueOptions, WorkerPool, Worker } from './src/worker';
+} from './wamp';
+export { type WS, type WSError, Websocket } from './websocket';
+export { type QueueOptions, WorkerPool, Worker } from './worker';

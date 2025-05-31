@@ -54,7 +54,7 @@ export const createSchemaFromDrizzle = (
 			properties[element.name] = t.Nullable(properties[element.name]);
 		}
 
-		if (mode === 'update' || element.hasDefault) {
+		if (mode === 'update' || element.hasDefault || !element.notNull) {
 			properties[element.name] = t.Optional(properties[element.name]);
 		}
 	}
@@ -324,9 +324,7 @@ export namespace Tenancy {
 	 */
 	export const wrapTenant = <
 		T extends ModelClass<TTableName, TColumnsMap>,
-		TTableName extends string = T extends ModelClass<infer TTableName, infer TColumnsMap>
-			? TTableName
-			: string,
+		TTableName extends string = T extends ModelClass<infer TTableName, any> ? TTableName : string,
 		TColumnsMap extends Record<string, PgColumnBuilderBase> = T extends ModelClass<
 			TTableName,
 			infer TColumnsMap

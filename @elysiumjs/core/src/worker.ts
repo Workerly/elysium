@@ -345,7 +345,7 @@ export class Worker extends InteractsWithConsole {
 			}
 		} else {
 			// Pause all queues
-			for (const [name, queue] of this.queues.entries()) {
+			for (const [name] of this.queues.entries()) {
 				this.pause(name);
 			}
 		}
@@ -393,7 +393,7 @@ export class Worker extends InteractsWithConsole {
 			}
 		} else {
 			// Drain all queues
-			for (const [name, queue] of this.queues.entries()) {
+			for (const [name] of this.queues.entries()) {
 				this.drain(name);
 			}
 		}

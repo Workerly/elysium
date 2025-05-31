@@ -1,12 +1,30 @@
 # @elysiumjs/core
 
-Core functionality for the Elysium framework.
+Core functionalities for the Elysium.js framework.
+
+> **NOTE**
+>
+> This package is part of the Elysium.js framework, which is built exclusively for Bun runtime.
 
 ## Installation
 
 ```bash
 bun install @elysiumjs/core
 ```
+
+## Features
+
+- Dependency Injection
+- HTTP Controllers
+- WebSocket support
+- WAMP protocol integration
+- Command-line interface (`@elysiumjs/styx`), with support for custom commands
+- Event system
+- Caching (memory and Redis)
+- PostgreSQL database support with Drizzle ORM
+- Model classes and repositories for database interactions
+- Multi-tenancy support enabled
+- Swagger documentation
 
 ## Usage
 
@@ -39,11 +57,11 @@ export class MainModule extends Module {
 		super();
 	}
 
-	public beforeRegister() {
+	public async beforeRegister(): Promise<void> {
 		console.log('Module is being registered');
 	}
 
-	public afterRegister() {
+	public async afterRegister(): Promise<void> {
 		console.log('Module registered successfully');
 	}
 }
@@ -82,20 +100,11 @@ Start the server:
 bun run index.ts serve
 ```
 
-## Features
+Or, if using `styx`, run:
 
-- Dependency Injection
-- HTTP Controllers
-- WebSocket support
-- WAMP protocol integration
-- Command-line interface (`styx`), with support for custom commands
-- Event system
-- Caching (memory and Redis)
-- Worker pool with queues for background jobs (using Bun's Worker API, Redis-based implementation planned)
-- PostgreSQL database support with Drizzle ORM
-- Model classes and repositories for database interactions
-- Multi-tenancy support enabled
-- Swagger documentation
+```bash
+bun styx serve
+```
 
 ## Documentation
 
@@ -109,4 +118,4 @@ Feel free to open issues for any bugs or questions you may have. Pull requests a
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0. See the [LICENSE](../../LICENSE) file for more information.
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](https://github.com/workbud/elysium/blob/main/LICENSE) file for more information.

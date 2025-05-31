@@ -133,32 +133,32 @@ export abstract class Middleware<TGuards extends string[] = []> {
 	/**
 	 * Called first before everything else. This middleware hook works only when used on
 	 * a controller, a module, or the application.
-	 * @param ctx The request context.
+	 * @param _ctx The request context.
 	 */
-	public onRequest(ctx: Context): any {}
+	public onRequest(_ctx: Context): any {}
 
 	/**
 	 * Called before validation, but after the request has been parsed.
 	 * Use this method to modify the request inputs before validation.
-	 * @param ctx The request context.
+	 * @param _ctx The request context.
 	 */
-	public onTransform(ctx: Context): any {}
+	public onTransform(_ctx: Context): any {}
 
 	/**
 	 * Called after the request has been handled, but before the response is sent.
-	 * @param ctx The request context.
+	 * @param _ctx The request context.
 	 */
-	public onAfterHandle(ctx: Context): any {}
+	public onAfterHandle(_ctx: Context): any {}
 
 	/**
 	 * Called before the request is handled.
-	 * @param ctx The request context.
+	 * @param _ctx The request context.
 	 */
-	public onBeforeHandle(ctx: Context): any {}
+	public onBeforeHandle(_ctx: Context): any {}
 
 	/**
 	 * Called after the response has been sent.
-	 * @param ctx The request context.
+	 * @param _ctx The request context.
 	 */
-	public onAfterResponse(ctx: Context): any {}
+	public onAfterResponse(_ctx: Context): any {}
 }

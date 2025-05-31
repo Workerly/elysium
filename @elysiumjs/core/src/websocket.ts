@@ -115,7 +115,7 @@ export namespace Websocket {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onOpen = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 			metadata.open = descriptor.value;
 			Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
@@ -131,7 +131,7 @@ export namespace Websocket {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onClose = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 			metadata.close = descriptor.value;
 			Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
@@ -149,7 +149,7 @@ export namespace Websocket {
 	 * @param schema The schema of the message body.
 	 */
 	export const onMessage = (schema?: TSchema): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 			metadata.message = descriptor.value;
 			metadata.body = schema;
@@ -166,7 +166,7 @@ export namespace Websocket {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onDrain = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 			metadata.drain = descriptor.value;
 			Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);
@@ -182,7 +182,7 @@ export namespace Websocket {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onError = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _, descriptor) {
 			const metadata = Reflect.getMetadata(Symbols.websocket, target.constructor) ?? {};
 			metadata.error = descriptor.value;
 			Reflect.defineMetadata(Symbols.websocket, metadata, target.constructor);

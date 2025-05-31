@@ -87,7 +87,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public info(message: string): void {
-		this.write(`ℹ️ ${message}`);
+		this.write(`${this.format('ℹ', ConsoleFormat.BLUE)} ${message}`);
 	}
 
 	/**
@@ -95,7 +95,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public success(message: string): void {
-		this.write(`✅ ${message}`);
+		this.write(`${this.format('✔', ConsoleFormat.GREEN)} ${message}`);
 	}
 
 	/**
@@ -103,7 +103,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public warning(message: string): void {
-		this.write(`⚠️ ${message}`);
+		this.write(`${this.format('⚠', ConsoleFormat.YELLOW)} ${message}`);
 	}
 
 	/**
@@ -111,7 +111,7 @@ export class InteractsWithConsole {
 	 * @param message The message to write.
 	 */
 	public error(message: string): void {
-		this.write(`❌ ${message}`, true, process.stderr);
+		this.write(`${this.format('✖', ConsoleFormat.RED)} ${message}`, true, process.stderr);
 	}
 
 	/**

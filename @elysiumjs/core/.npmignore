@@ -1,13 +1,15 @@
 .git
-coverage
-tests
-node_modules
 .yalc
+coverage
+node_modules
+src
+tests
 
 .gitignore
 .prettierignore
 .prettierrc
 .DS_Store
+*.map
 
 bun.lock
 bunfig.toml

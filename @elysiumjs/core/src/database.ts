@@ -116,7 +116,7 @@ export class DatabaseCache extends DrizzleCache {
 		key: string,
 		response: any,
 		tables: string[],
-		isTag: boolean,
+		_isTag: boolean,
 		config?: CacheConfig
 	): Promise<void> {
 		await this.#cache.set(key, response, (config?.ex ?? this.globalTtl) * 1000);

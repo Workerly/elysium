@@ -652,7 +652,7 @@ export namespace Http {
 	 * @author Axel Nana <axel.nana@workbud.com>
 	 */
 	export const onRequest = (): MethodDecorator => {
-		return function (target, propertyKey, descriptor) {
+		return function (target, _, descriptor) {
 			const metadata = Reflect.getMetadata('http:onRequest', target.constructor) ?? {};
 			metadata.handler = descriptor.value;
 			Reflect.defineMetadata('http:onRequest', metadata, target.constructor);
