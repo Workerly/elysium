@@ -23,3 +23,6 @@ export * from './make_validator';
 
 export * from './migration_generate';
 export * from './migration_run';
+
+export * from './module_new';
+export * from './module_rename';

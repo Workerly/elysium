@@ -25,7 +25,7 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker class for creating Elysium middlewares.
+ * Maker class for creating Elysium.js middlewares.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class MakeMiddlewareCommand extends Command {
@@ -105,7 +105,12 @@ export class MakeMiddlewareCommand extends Command {
 			}
 		];
 
-		const answers = await prompts(items);
+		const answers = await prompts(items, {
+			onCancel: () => {
+				this.error('Operation cancelled.');
+				process.exit(0);
+			}
+		});
 
 		return this.build(answers);
 	}

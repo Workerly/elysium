@@ -17,6 +17,7 @@
 /build/
 /dist/
 styx.js
+*.map
 
 # misc
 .DS_Store

@@ -159,7 +159,12 @@ export class MakeServiceCommand extends Command {
 			}
 		];
 
-		const answers = await prompts(items);
+		const answers = await prompts(items, {
+			onCancel: () => {
+				this.error('Operation cancelled.');
+				process.exit(0);
+			}
+		});
 
 		return this.build(answers);
 	}

@@ -17,6 +17,8 @@ import { exists } from 'node:fs/promises';
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
 
+import { getProjectPath } from '../utils';
+
 /**
  * Generates migration files.
  * @author Axel Nana <axel.nana@workbud.com>
@@ -33,37 +35,46 @@ export class MigrationGenerateCommand extends Command {
 
 	public async run(): Promise<void> {
 		if (!this.name) {
-			const answers = await prompts([
-				{
-					type: 'text',
-					name: 'name',
-					message: 'Migration Name:',
-					initial: 'create_users_table',
-					validate(value: string) {
-						if (value.length < 1) {
-							return 'Migration name cannot be empty';
-						}
+			const answers = await prompts(
+				[
+					{
+						type: 'text',
+						name: 'name',
+						message: 'Migration Name:',
+						initial: 'create_users_table',
+						validate(value: string) {
+							if (value.length < 1) {
+								return 'Migration name cannot be empty';
+							}
 
-						return true;
+							return true;
+						}
+					}
+				],
+				{
+					onCancel: () => {
+						this.error('Operation cancelled.');
+						process.exit(0);
 					}
 				}
-			]);
+			);
 
 			this.name = answers.name;
 		}
 
-		let schemaPath = `./src/database/schemas`;
-		if (await exists(`${process.cwd()}/src/database/schema.ts`)) {
-			schemaPath = `./src/database/schema.ts`;
+		const projectRoot = getProjectPath();
+		let schemaPath = `${projectRoot}/src/database/schemas`;
+		if (await exists(`${projectRoot}/src/database/schema.ts`)) {
+			schemaPath = `${projectRoot}/src/database/schema.ts`;
 		}
 
-		await Bun.$`bunx --bun drizzle-kit generate --dialect postgresql --schema ${schemaPath} --out ./src/database/migrations --prefix timestamp --name ${this.name}`;
+		await Bun.$`bunx --bun drizzle-kit generate --dialect postgresql --schema ${schemaPath} --out ${projectRoot}/src/database/migrations --prefix timestamp --name ${this.name}`;
 
-		const sqlFiles = new Bun.Glob(`${process.cwd()}/src/database/migrations/**/*.sql`).scan();
+		const sqlFiles = new Bun.Glob(`${projectRoot}/src/database/migrations/**/*.sql`).scan();
 		for await (const path of sqlFiles) {
 			const file = Bun.file(path);
 			const content = await file.text();
-			await file.write(content.replace(/"public"./gm, ''));
+			await file.write(content.replace(/"public"\./gm, ''));
 		}
 	}
 }

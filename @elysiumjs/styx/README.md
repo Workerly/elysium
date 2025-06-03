@@ -1,6 +1,6 @@
 # @elysiumjs/styx
 
-CLI tool for Elysium.
+CLI tool for Elysium.js framework.
 
 ## Installation
 
@@ -10,19 +10,36 @@ bun install @elysiumjs/styx
 
 ## Usage
 
-The `styx` command needs to be run from the root of your Elysium project.
+The `styx` command needs to be run inside an Elysium.js project.
 
 To create new items:
 
 ```bash
-bun styx exec make:controller [options]
-bun styx exec make:job [options]
-bun styx exec make:middleware [options]
-bun styx exec make:service [options]
-bun styx exec make:command [options]
+bun styx make:command [options]
+bun styx make:controller [options]
+bun styx make:job [options]
+bun styx make:middleware [options]
+bun styx make:model [options]
+bun styx make:repository [options]
+bun styx make:service [options]
+bun styx make:validator [options]
 ```
 
-To start the Elysium project:
+To manage migrations:
+
+```bash
+bun styx migration:generate [options]
+bun styx migration:run [options]
+```
+
+To manage modules:
+
+```bash
+bun styx module:new [options]
+bun styx module:rename [options]
+```
+
+To start the Elysium.js project:
 
 ```bash
 bun styx serve
@@ -31,13 +48,7 @@ bun styx serve
 To execute a custom command:
 
 ```bash
-bun styx exec <command>
-```
-
-To run a worker:
-
-```bash
-bun styx work --queue queue1 --queue queue2
+bun styx <command>
 ```
 
 To show all available commands:
@@ -60,4 +71,4 @@ Feel free to open issues for any bugs or questions you may have. Pull requests a
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0. See the [LICENSE](../../LICENSE) file for more information.
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](https://github.com/workbud/elysium/blob/main/LICENSE) file for more information.

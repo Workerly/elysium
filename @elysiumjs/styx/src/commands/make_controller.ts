@@ -25,7 +25,7 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker class for creating Elysium controllers.
+ * Maker class for creating Elysium.js controllers.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class MakeControllerCommand extends Command {
@@ -239,7 +239,12 @@ export class MakeControllerCommand extends Command {
 			}
 		];
 
-		const answers = await prompts(items);
+		const answers = await prompts(items, {
+			onCancel: () => {
+				this.error('Operation cancelled.');
+				process.exit(0);
+			}
+		});
 
 		return this.build(answers);
 	}

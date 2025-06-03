@@ -12,6 +12,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import 'reflect-metadata';
+
 import {
 	MakeCommandCommand,
 	MakeControllerCommand,
@@ -22,10 +24,14 @@ import {
 	MakeServiceCommand,
 	MakeValidatorCommand,
 	MigrationGenerateCommand,
-	MigrationRunCommand
-} from './src/commands';
+	MigrationRunCommand,
+	ModuleNewCommand,
+	ModuleRenameCommand
+} from './commands';
+import { getProjectPath } from './utils';
 
-const { App } = await import(`${process.cwd()}/src/app`);
+const projectPath = getProjectPath();
+const { App } = await import(`${projectPath}/src/app`);
 
 @App.register({
 	commands: [
@@ -38,7 +44,9 @@ const { App } = await import(`${process.cwd()}/src/app`);
 		MakeServiceCommand,
 		MakeValidatorCommand,
 		MigrationGenerateCommand,
-		MigrationRunCommand
+		MigrationRunCommand,
+		ModuleNewCommand,
+		ModuleRenameCommand
 	]
 })
 class StyxApp extends App {}

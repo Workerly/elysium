@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { resolve } from 'node:path';
+import { join } from 'node:path';
+
+import { getProjectPath } from './utils';
 
 /**
  * Describes the Elysium project's configuration.
@@ -44,12 +46,12 @@ export interface ProjectConfig {
  * @returns The Elysium project's configuration.
  */
 export const parseProjectConfig = async (): Promise<ProjectConfig> => {
-	const config = Bun.file(resolve('.elysiumrc'));
-	if (!config.exists()) {
+	const file = Bun.file(join(getProjectPath(), '.elysiumrc'));
+	if (!file.exists()) {
 		throw new Error('Elysium config file not found.');
 	}
 
-	return JSON.parse(await config.text());
+	return file.json();
 };
 
 /**
@@ -58,7 +60,7 @@ export const parseProjectConfig = async (): Promise<ProjectConfig> => {
  * @param config The Elysium project's configuration.
  */
 export const writeProjectConfig = async (config: ProjectConfig) => {
-	const file = Bun.file(resolve('.elysiumrc'));
+	const file = Bun.file(join(getProjectPath(), '.elysiumrc'));
 	await file.write(JSON.stringify(config, null, 2));
 };
 

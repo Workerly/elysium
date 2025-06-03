@@ -25,7 +25,7 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker class for creating Elysium commands.
+ * Maker class for creating Elysium.js commands.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class MakeCommandCommand extends Command {
@@ -132,7 +132,12 @@ export class MakeCommandCommand extends Command {
 			}
 		];
 
-		const answers = await prompts(items);
+		const answers = await prompts(items, {
+			onCancel: () => {
+				this.error('Operation cancelled.');
+				process.exit(0);
+			}
+		});
 
 		answers.name = pascal(answers.command.replaceAll(':', '_'));
 

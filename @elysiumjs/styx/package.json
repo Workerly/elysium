@@ -1,35 +1,34 @@
 {
 	"name": "@elysiumjs/styx",
-	"version": "0.4.0",
+	"version": "0.5.0",
 	"license": "Apache-2.0",
-	"description": "The CLI tool for the Elysium framework.",
+	"description": "The CLI tool for the Elysium.js framework.",
 	"private": false,
-	"author": {
-		"name": "Axel Nana",
-		"email": "axel.nana@workbud.com"
-	},
+	"author": "Workbud Technologies Inc.",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Workerly/elysium"
+		"url": "https://github.com/workbud/elysium"
 	},
-	"homepage": "https://github.com/Workerly/elysium",
+	"homepage": "https://github.com/workbud/elysium",
 	"scripts": {
 		"format": "prettier --write \"./src/**/*.ts\"",
-		"build": "bun build index.ts --outfile=styx.js --target bun --minify -e @elysiumjs/core"
+		"build": "bun build ./src/styx.ts --outdir=./ --root ./src --target bun --minify -e @elysiumjs/core -e reflect-metadata",
+		"prepublishOnly": "bun run build"
 	},
 	"keywords": [
 		"elysium",
 		"framework",
 		"web",
 		"api",
-		"typescript"
+		"typescript",
+		"cli"
 	],
 	"type": "module",
 	"bin": {
 		"styx": "./styx.js"
 	},
 	"devDependencies": {
-		"@ianvs/prettier-plugin-sort-imports": "^4.4.1",
+		"@ianvs/prettier-plugin-sort-imports": "^4.4.2",
 		"@types/bun": "latest",
 		"@types/prompts": "^2.4.9",
 		"@types/string-template": "^1.0.6",

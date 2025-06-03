@@ -69,14 +69,22 @@ export class MigrationRunCommand extends Command {
 		) AS schema_exists;`;
 
 			if (!schema_exists) {
-				const answers = await prompts([
+				const answers = await prompts(
+					[
+						{
+							type: 'confirm',
+							name: 'create',
+							message: `Schema ${this.tenant} does not exist. Do you want to create it?`,
+							initial: true
+						}
+					],
 					{
-						type: 'confirm',
-						name: 'create',
-						message: `Schema ${this.tenant} does not exist. Do you want to create it?`,
-						initial: true
+						onCancel: () => {
+							this.error('Operation cancelled.');
+							process.exit(0);
+						}
 					}
-				]);
+				);
 
 				if (answers.create) {
 					await sql`CREATE SCHEMA ${sql(this.tenant)};`;
@@ -91,7 +99,7 @@ export class MigrationRunCommand extends Command {
 			const [{ table_exists }] = await sql`SELECT EXISTS (
 			SELECT *
 			  FROM information_schema.tables
-			 WHERE table_name = 'elysium_migrations' 
+			 WHERE table_name = 'elysium_migrations'
 			   AND table_schema = ${this.tenant}
 		) AS table_exists;`;
 

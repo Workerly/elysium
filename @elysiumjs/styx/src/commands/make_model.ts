@@ -25,7 +25,7 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker command for creating Elysium models.
+ * Maker command for creating Elysium.js models.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class MakeModelCommand extends Command {
@@ -74,15 +74,20 @@ export class MakeModelCommand extends Command {
 		};
 
 		if (!answers.module && !config.mono) {
-			const module = await prompts({
-				type: 'select',
-				name: 'module',
-				message: 'Module:',
-				choices: Object.keys(config.modules ?? {}).map((moduleName) => ({
-					title: moduleName,
-					value: moduleName
-				}))
-			});
+			const module = await prompts(
+				{
+					type: 'select',
+					name: 'module',
+					message: 'Module:',
+					choices: Object.keys(config.modules ?? {}).map((moduleName) => ({
+						title: moduleName,
+						value: moduleName
+					}))
+				},
+				{
+					onCancel: () => process.exit(1)
+				}
+			);
 
 			answers.module = module.module;
 		}
@@ -160,7 +165,12 @@ export class MakeModelCommand extends Command {
 			}
 		];
 
-		const answers = await prompts(items);
+		const answers = await prompts(items, {
+			onCancel: () => {
+				this.error('Operation cancelled.');
+				process.exit(0);
+			}
+		});
 
 		return this.build(answers);
 	}

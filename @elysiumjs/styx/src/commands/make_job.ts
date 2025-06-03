@@ -25,7 +25,7 @@ import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
 
 /**
- * Maker class for creating Elysium jobs.
+ * Maker class for creating Elysium.js jobs.
  * @author Axel Nana <axel.nana@workbud.com>
  */
 export class MakeJobCommand extends Command {
@@ -141,7 +141,12 @@ export class MakeJobCommand extends Command {
 			}
 		];
 
-		const answers = await prompts(items);
+		const answers = await prompts(items, {
+			onCancel: () => {
+				this.error('Operation cancelled.');
+				process.exit(0);
+			}
+		});
 
 		return this.build(answers);
 	}
