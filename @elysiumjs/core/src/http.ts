@@ -12,13 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { AppHttpContext } from '@elysiumjs/core';
-import type { Context as ElysiaContext, Handler, HTTPMethod, PreContext, TSchema } from 'elysia';
+import type {
+	Context as ElysiaContext,
+	Handler,
+	HTTPMethod,
+	PreContext,
+	SingletonBase,
+	SSEPayload,
+	TSchema
+} from 'elysia';
 import type { Class, MergeDeep } from 'type-fest';
 import type { Middleware } from './middleware';
 import type { Module } from './module';
 
-import { Elysia, t } from 'elysia';
+import { Elysia, sse as esse, t } from 'elysia';
 import { assign, isEmpty, objectify } from 'radash';
 
 import { Application } from './app';
@@ -60,10 +67,18 @@ export type ValidatorClass<T extends TSchema = TSchema> = {
 };
 
 /**
+ * The type for the context of the application.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export interface AppHttpContext extends SingletonBase {}
+
+/**
  * A function that handles an HTTP request.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-type HttpRequestHandler = (...args: unknown[]) => unknown;
+type HttpRequestHandler = <TResult = unknown, TArgs extends any[] = unknown[]>(
+	...args: TArgs
+) => Promise<TResult>;
 
 /**
  * Stores metadata for an HTTP request handler.
@@ -344,17 +359,25 @@ export namespace Http {
 					name: target.name
 				});
 
-				if (props.scope === HttpControllerScope.SERVER) {
-					const controller = Service.make(target);
-					app.resolve({ as: 'local' }, () => ({ controller: () => controller }));
-				} else if (props.scope === HttpControllerScope.REQUEST) {
-					app.resolve({ as: 'local' }, () => ({ controller: () => Service.make(target) }));
-				}
+				const getController = (() => {
+					if (props.scope === HttpControllerScope.SERVER) {
+						return () => {
+							const controller = Service.make(target);
+							return () => controller;
+						};
+					} else if (props.scope === HttpControllerScope.REQUEST) {
+						return () => () => Service.make(target);
+					} else {
+						throw new Error(`Invalid scope for controller: ${target.name}`);
+					}
+				})();
+
+				app.resolve({ as: 'local' }, () => ({ controller: getController() }));
 
 				const onRequest = Reflect.getMetadata('http:onRequest', target) ?? {};
 				if (onRequest.handler) {
 					app.onRequest((c: PreContext<Singleton>) => {
-						const controller = c.controller();
+						const controller = getController()();
 						return onRequest.handler.call(controller, c);
 					});
 				}
@@ -411,9 +434,11 @@ export namespace Http {
 					route.method = isSSE ? 'GET' : route.method;
 
 					const getHandler = () => {
-						const initTransactedHandler = (c: Context) => {
+						const initTransactedHandler = <TResult = unknown, TArgs extends any[] = unknown[]>(
+							c: Context
+						) => {
 							if (isTransactional) {
-								return function (...args: unknown[]) {
+								return function (...args: TArgs) {
 									return Database.getDefaultConnection().transaction((tx) => {
 										return Application.context.run(
 											new Map([
@@ -423,7 +448,7 @@ export namespace Http {
 											]),
 											() => {
 												try {
-													return route.handler.call(c.controller(), ...args) as Promise<unknown>;
+													return route.handler.call(c.controller(), ...args) as Promise<TResult>;
 												} catch (e) {
 													tx.rollback();
 													throw e;
@@ -434,13 +459,13 @@ export namespace Http {
 								};
 							}
 
-							return function (...args: unknown[]) {
+							return function (...args: TArgs) {
 								return Application.context.run(
 									new Map([
 										['tenant', c.tenant as unknown],
 										['http:context', c]
 									]),
-									() => route.handler.call(c.controller(), ...args) as Promise<unknown>
+									() => route.handler.call(c.controller(), ...args) as Promise<TResult>
 								);
 							};
 						};
@@ -448,10 +473,10 @@ export namespace Http {
 						if (isGenerator) {
 							return async function* (c: Context) {
 								const handler = initTransactedHandler(c);
+								const params = await getParameters(c);
 
 								try {
-									for await (const eachValue of handler(...(await getParameters(c))) as any)
-										yield eachValue;
+									for await (const eachValue of handler(...params) as any) yield eachValue;
 								} catch (error: any) {
 									yield error;
 								}
@@ -460,15 +485,15 @@ export namespace Http {
 
 						if (isSSE) {
 							return async function* (c: Context) {
-								const handler = initTransactedHandler(c);
+								const handler = initTransactedHandler<SSEPayload>(c);
 
-								c.set.headers['Content-Type'] = 'text/event-stream';
-								c.set.headers['Cache-Control'] = 'no-cache';
-								c.set.headers['Connection'] = 'keep-alive';
+								c.set.headers['content-type'] = 'text/event-stream';
+								c.set.headers['cache-control'] = 'no-cache';
+								c.set.headers['connection'] = 'keep-alive';
 
 								while (true) {
-									yield `data: ${await handler(...(await getParameters(c)))}\n\n`;
-									await Bun.sleep(1);
+									yield esse(await handler(...(await getParameters(c))));
+									await Bun.sleep(10);
 								}
 							};
 						}
