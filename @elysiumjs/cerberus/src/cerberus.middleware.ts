@@ -38,15 +38,18 @@ export class CerberusMiddleware extends Middleware {
 
 		if (config.defineAbility) {
 			ctx['elysium:cerberus'] = await config.defineAbility(subject, defineAbility);
-			return;
+		} else if (config.getAbilities) {
+			const abilities = await config.getAbilities(ctx);
+
+			ctx['elysium:cerberus'] = defineAbility((can) => {
+				for (const ability of abilities) {
+					can(ability.action, ability.resource);
+				}
+			});
+		} else {
+			ctx['elysium:cerberus'] = defineAbility((can) => {
+				can('manage', 'all');
+			});
 		}
-
-		const abilities = await config.getAbilities(ctx);
-
-		ctx['elysium:cerberus'] = defineAbility((can) => {
-			for (const ability of abilities) {
-				can(ability.action, ability.resource);
-			}
-		});
 	}
 }

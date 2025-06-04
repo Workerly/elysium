@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { Cerberus } from './src/capability';
-export { CerberusMiddleware } from './src/cerberus.middleware';
-export type { CerberusConfig, Subject, Ability } from './src/utils';
+export { Cerberus } from './capability';
+export { CerberusMiddleware } from './cerberus.middleware';
+export type { CerberusConfig, Subject, Ability } from './utils';

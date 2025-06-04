@@ -12,36 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 {
-  "compilerOptions": {
-    // Environment setup & latest features
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleDetection": "force",
-    "allowJs": true,
-    "types": [
-      "bun-types",
-      "type-fest"
-    ],
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    // Bundler mode
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "noEmit": true,
-    // Best practices
-    "strict": true,
-    "skipLibCheck": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": false,
-    "forceConsistentCasingInFileNames": true,
-    // Some stricter flags (disabled by default)
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noPropertyAccessFromIndexSignature": false,
-  },
-  "exclude": [
-    "node_modules",
-    "dist",
-  ],
+	"compilerOptions": {
+		// Environment setup & latest features
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleDetection": "force",
+		"allowJs": true,
+		"types": ["bun-types", "type-fest"],
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		// Compiler setup
+		"outDir": "dist",
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"declarationMap": false,
+		"declarationDir": "dist",
+		"rootDir": "src",
+		// Bundler mode
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		// Best practices
+		"strict": true,
+		"skipLibCheck": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": false,
+		"forceConsistentCasingInFileNames": true,
+		// Some stricter flags (disabled by default)
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noPropertyAccessFromIndexSignature": false
+	},
+	"exclude": ["node_modules", "dist"],
+	"include": ["src"]
 }

@@ -1,36 +1,43 @@
 {
 	"name": "@elysiumjs/cerberus",
-	"version": "0.1.3",
+	"version": "0.2.0",
 	"license": "Apache-2.0",
 	"description": "Ability-based roles and permissions layer for Elysium.js apps.",
 	"private": false,
-	"author": {
-		"name": "Axel Nana",
-		"email": "axel.nana@workbud.com"
-	},
+	"author": "Workbud Technologies Inc.",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Workerly/elysium"
 	},
 	"homepage": "https://github.com/Workerly/elysium",
 	"scripts": {
-		"format": "prettier --write \"./src/**/*.ts\""
+		"format": "prettier --write \"./src/**/*.ts\"",
+		"clean": "rimraf dist",
+		"build:js": "bun build ./src/index.ts --outdir ./dist --target bun --packages external --root ./src --minify",
+		"build:ts": "tsc",
+		"build": "bun run clean && bun run build:js && bun run build:ts",
+		"prepublishOnly": "bun run build"
 	},
 	"keywords": [
 		"elysium",
 		"framework",
 		"web",
 		"api",
-		"typescript"
+		"typescript",
+		"authorization",
+		"role-based",
+		"permissions"
 	],
-	"module": "index.ts",
+	"module": "dist/index.js",
 	"type": "module",
+	"types": "dist/index.d.ts",
 	"dependencies": {
 		"@casl/ability": "^6.7.3"
 	},
 	"devDependencies": {
-		"@ianvs/prettier-plugin-sort-imports": "^4.4.1",
+		"@ianvs/prettier-plugin-sort-imports": "^4.4.2",
 		"@types/bun": "latest",
+		"rimraf": "^6.0.1",
 		"type-fest": "^4.41.0"
 	},
 	"peerDependencies": {
