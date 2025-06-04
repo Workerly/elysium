@@ -9,7 +9,6 @@ tests
 .prettierignore
 .prettierrc
 .DS_Store
-*.map
 
 bun.lock
 bunfig.toml

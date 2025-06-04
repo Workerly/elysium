@@ -25,7 +25,7 @@
 		"outDir": "dist",
 		"declaration": true,
 		"emitDeclarationOnly": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"declarationDir": "dist",
 		"rootDir": "src",
 		// Bundler mode

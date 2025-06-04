@@ -1,6 +1,6 @@
 {
 	"name": "@elysiumjs/core",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"license": "Apache-2.0",
 	"description": "A super-charged web framework for Bun, built on top of ElysiaJS.",
 	"private": false,
@@ -13,7 +13,7 @@
 	"scripts": {
 		"format": "prettier --write \"./src/**/*.ts\"",
 		"clean": "rimraf dist",
-		"build:js": "bun build ./src/index.ts --outdir ./dist --target bun --packages external --root ./src --minify --sourcemap",
+		"build:js": "bun build ./src/index.ts --outdir ./dist --target bun --packages external --root ./src --minify",
 		"build:ts": "tsc",
 		"build": "bun run clean && bun run build:js && bun run build:ts",
 		"prepublishOnly": "bun run build"

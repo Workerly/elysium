@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { AppEnv } from '@elysiumjs/core';
+/**
+ * The type for all registered environment variables.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type AppEnv = Record<string, unknown>;
 
 const env: Map<string, unknown> = new Map();
 
