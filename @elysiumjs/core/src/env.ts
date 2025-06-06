@@ -12,11 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/**
- * The type for all registered environment variables.
- * @author Axel Nana <axel.nana@workbud.com>
- */
-export type AppEnv = Record<string, unknown>;
+import type { AppEnv } from '.';
 
 const env: Map<string, unknown> = new Map();
 

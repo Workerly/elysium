@@ -17,11 +17,11 @@ import type {
 	Handler,
 	HTTPMethod,
 	PreContext,
-	SingletonBase,
 	SSEPayload,
 	TSchema
 } from 'elysia';
 import type { Class, MergeDeep } from 'type-fest';
+import type { AppHttpContext } from '.';
 import type { Middleware } from './middleware';
 import type { Module } from './module';
 
@@ -65,12 +65,6 @@ export type ValidatorClass<T extends TSchema = TSchema> = {
 	 */
 	validate(ctx: Context<T['static']>): Promise<boolean>;
 };
-
-/**
- * The type for the context of the application.
- * @author Axel Nana <axel.nana@workbud.com>
- */
-export interface AppHttpContext extends SingletonBase {}
 
 /**
  * A function that handles an HTTP request.

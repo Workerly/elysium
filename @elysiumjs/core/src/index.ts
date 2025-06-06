@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { SingletonBase } from 'elysia';
+
 import './macros';
 
 export { type Elysia, type TSchema, type Static, t } from 'elysia';
@@ -52,3 +54,15 @@ export {
 } from './wamp';
 export { type WS, type WSError, Websocket } from './websocket';
 export { type QueueOptions, WorkerPool, Worker } from './worker';
+
+/**
+ * The type for the context of the application.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export interface AppHttpContext extends SingletonBase {}
+
+/**
+ * The type for all registered environment variables.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type AppEnv = Record<string, unknown>;
