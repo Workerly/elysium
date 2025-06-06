@@ -39,7 +39,7 @@ export namespace Env {
 		name: TKey,
 		defaultValue?: AppEnv[TKey]
 	): AppEnv[TKey] => {
-		return (env.get(name) ?? defaultValue) as AppEnv[TKey];
+		return (env.get(name as string) ?? defaultValue) as AppEnv[TKey];
 	};
 
 	/**
@@ -49,7 +49,7 @@ export namespace Env {
 	 * @returns `true` if the environment variable exists, `false` otherwise.
 	 */
 	export const exists = <TKey extends keyof AppEnv>(name: TKey): boolean => {
-		return env.has(name);
+		return env.has(name as string);
 	};
 
 	/**

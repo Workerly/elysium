@@ -65,4 +65,6 @@ export interface AppHttpContext extends SingletonBase {}
  * The type for all registered environment variables.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type AppEnv = Record<string, unknown>;
+export interface AppEnv {
+	[key: string]: string;
+}
