@@ -14,7 +14,6 @@
 
 import type { Job, JobOverlapBehavior } from './job';
 import type { QueueOptions } from './queue';
-import type { Transport } from './transport';
 
 /**
  * Represents a job in the queue with its metadata.
@@ -81,6 +80,12 @@ export type QueuedJob = {
 };
 
 /**
+ * Options for worker queues.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export type WorkerQueueOptions = Omit<QueueOptions, 'transport'>;
+
+/**
  * State associated with a job queue managed by a worker.
  * @author Axel Nana <axel.nana@workbud.com>
  */
@@ -88,7 +93,7 @@ export type QueueState = {
 	/**
 	 * The queue configuration options.
 	 */
-	options: QueueOptions;
+	options: WorkerQueueOptions;
 
 	/**
 	 * The jobs waiting to be processed.
@@ -114,11 +119,6 @@ export type QueueState = {
 	 * Whether the queue is currently being drained (completing existing jobs but not accepting new ones).
 	 */
 	draining: boolean;
-
-	/**
-	 * The transport used by this queue, if different from the worker's default.
-	 */
-	transport?: Transport;
 };
 
 /**

@@ -15,6 +15,7 @@
 import type { JobClass } from '../job';
 import type { JobDispatchOptions, QueueOptions } from '../queue';
 import type { TransportEvent } from '../transport';
+import type { Worker } from '../worker';
 
 import { Service } from '@elysiumjs/core';
 
@@ -29,12 +30,7 @@ import { BaseWorker } from './base.worker';
  * This worker can run in a separate process from the dispatcher.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class RedisWorker extends BaseWorker {
-	/**
-	 * Transport instance used for Redis communication
-	 */
-	private transport: RedisTransport;
-
+export class RedisWorker extends BaseWorker<RedisTransport> {
 	/**
 	 * Whether the worker is currently running
 	 */
@@ -53,7 +49,6 @@ export class RedisWorker extends BaseWorker {
 	constructor(connectionName: string = 'default', options: Record<string, any> = {}) {
 		super(options.id);
 
-		// Create transport in consumer mode
 		this.transport = new RedisTransport(TransportMode.CONSUMER, {
 			connection: connectionName,
 			consumerName: `worker-${this.id}`,
@@ -354,7 +349,7 @@ export class RedisWorker extends BaseWorker {
 	 * Create a new queue with the specified options
 	 * @param options Queue options
 	 */
-	public async createQueue(options: QueueOptions): Promise<BaseWorker> {
+	public override async createQueue(options: QueueOptions): Promise<Worker> {
 		const result = await super.createQueue(options);
 
 		// Register the new queue with the transport if worker is running
@@ -363,7 +358,7 @@ export class RedisWorker extends BaseWorker {
 			await this.transport.registerWorker(this.id, Array.from(this.registeredQueues));
 		}
 
-		return result as BaseWorker;
+		return result;
 	}
 
 	/**
@@ -480,44 +475,10 @@ export class RedisWorker extends BaseWorker {
 
 			// Add job to queue for processing
 			await this.addJob(job, queueName, jobOptions);
-		} catch (error) {
-			this.error(`Error processing job ${jobName}: ${error}`);
+		} catch (error: any) {
+			this.error(`Error processing job ${jobName}: ${error.message}`);
+			this.sendJobStatusUpdate(jobId, dispatchId, queueName, JobStatus.FAILED, error.message);
 			throw error;
-		}
-	}
-
-	/**
-	 * Send job status update
-	 * @param jobId Job ID
-	 * @param queue Queue name
-	 * @param status Job status
-	 * @param error Optional error message
-	 */
-	private async sendJobStatusUpdate(
-		jobId: string,
-		dispatchId: string,
-		queue: string,
-		status: JobStatus,
-		error?: string
-	): Promise<void> {
-		try {
-			// Direct call to updateJobStatus (required by Transport interface)
-			await this.transport.updateJobStatus(jobId, dispatchId, queue, {
-				dispatchId,
-				status,
-				error,
-				retries: 0,
-				startedAt: status === JobStatus.RUNNING ? new Date().toISOString() : undefined,
-				completedAt:
-					status === JobStatus.COMPLETED ||
-					status === JobStatus.FAILED ||
-					status === JobStatus.CANCELLED
-						? new Date().toISOString()
-						: undefined,
-				updatedAt: Date.now().toString()
-			});
-		} catch (error) {
-			this.error(`Error sending job status update: ${error}`);
 		}
 	}
 }

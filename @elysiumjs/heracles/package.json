@@ -1,24 +1,26 @@
 {
 	"name": "@elysiumjs/heracles",
-	"version": "0.4.4",
-	"description": "Background job processing system for Elysium.js",
-	"main": "index.ts",
-	"bin": {
-		"heracles": "./dist/bin/cli.js"
-	},
+	"version": "0.5.0",
+	"description": "Background job processing system for Elysium.js apps.",
+	"module": "dist/index.js",
+	"type": "module",
+	"types": "dist/index.d.ts",
 	"scripts": {
-		"build:cli": "bun build ./bin/cli.ts --outdir ./dist/bin --target bun -e @elysiumjs/heracles -e @elysiumjs/core",
 		"test": "bun test",
 		"dev": "bun --watch src/index.ts",
-		"clean": "rimraf dist",
 		"format": "prettier --write 'src/**/*.{ts,tsx}'",
-		"prepublishOnly": "bun run clean && bun run build:cli"
+		"clean": "rimraf dist",
+		"build:js": "bun build ./src/index.ts --outdir ./dist --target bun --packages external --root ./src --minify",
+		"build:ts": "tsc",
+		"build": "bun run clean && bun run build:js && bun run build:ts",
+		"prepublishOnly": "bun run build"
 	},
 	"keywords": [
 		"elysium",
 		"job",
 		"queue",
 		"worker",
+		"scheduler",
 		"background",
 		"processing",
 		"heracles"
@@ -31,7 +33,7 @@
 		"reflect-metadata": "^0.2.2"
 	},
 	"devDependencies": {
-		"bun-types": "^1.2.13",
+		"bun-types": "^1.2.15",
 		"prettier": "^3.5.3",
 		"rimraf": "^6.0.1",
 		"type-fest": "^4.41.0"

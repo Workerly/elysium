@@ -56,8 +56,11 @@ export namespace Heracles {
 		const dispatchId = `dispatch_${Date.now()}_${uid(8)}`;
 
 		// Include overlap behavior information in the options
-		const dispatchOptions = {
+		const dispatchOptions: JobDispatchOptions = {
 			dispatchId,
+			priority: metadata.priority,
+			maxRetries: metadata.maxRetries,
+			retryDelay: metadata.retryDelay,
 			overlapBehavior: metadata.overlapBehavior,
 			overlapDelay: metadata.overlapDelay,
 			...options

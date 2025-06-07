@@ -16,6 +16,7 @@ import type { JobDispatchOptions } from './queue';
 
 /**
  * Discriminated union of all events carried by a transport channel.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportEvent =
 	| TransportProcessMessage
@@ -30,6 +31,7 @@ export type TransportEvent =
 
 /**
  * Message sent to process a job.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportProcessMessage = {
 	/**
@@ -79,6 +81,7 @@ export type TransportProcessMessage = {
 
 /**
  * Message sent to cancel a job (by ID).
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportCancelMessage = {
 	/**
@@ -104,6 +107,7 @@ export type TransportCancelMessage = {
 
 /**
  * Message sent to cancel all jobs.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportCancelAllMessage = {
 	/**
@@ -119,6 +123,7 @@ export type TransportCancelAllMessage = {
 
 /**
  * Message with job status information.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportJobStatusMessage = {
 	/**
@@ -179,6 +184,7 @@ export type TransportJobStatusMessage = {
 
 /**
  * Message with worker status information.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportWorkerStatusMessage = {
 	/**
@@ -214,6 +220,7 @@ export type TransportWorkerStatusMessage = {
 
 /**
  * Message with job results.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportJobResultMessage = {
 	/**
@@ -264,6 +271,7 @@ export type TransportJobResultMessage = {
 
 /**
  * Message for worker registration.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportWorkerRegistrationMessage = {
 	/**
@@ -284,6 +292,7 @@ export type TransportWorkerRegistrationMessage = {
 
 /**
  * Message indicating a worker is ready.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportWorkerReadyMessage = {
 	/**
@@ -314,6 +323,7 @@ export type TransportWorkerReadyMessage = {
 
 /**
  * Job status information.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export interface JobStatusInfo {
 	/**
@@ -375,6 +385,7 @@ export interface JobStatusInfo {
 
 /**
  * Indicates what mode a Transport is operating in.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export enum TransportMode {
 	/**
@@ -390,6 +401,7 @@ export enum TransportMode {
 
 /**
  * Message specific to job status updates.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportJobUpdateMessage = {
 	/**
@@ -430,6 +442,7 @@ export type TransportJobUpdateMessage = {
 
 /**
  * Interface for any transport layer that delivers job events between queue and worker.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export interface Transport {
 	/**
@@ -506,6 +519,7 @@ export interface Transport {
 
 /**
  * Type signature for a transport constructor.
+ * @author Axel Nana <axel.nana@workbud.com>
  */
 export type TransportClass<T extends Transport = Transport> = {
 	/**

@@ -13,26 +13,36 @@
 // limitations under the License.
 
 import type { Job } from '../job';
-import type { JobDispatchOptions, QueueOptions } from '../queue';
+import type { JobDispatchOptions } from '../queue';
 import type { Transport } from '../transport';
-import type { QueuedJob, QueueState, Worker, WorkerInfo } from '../worker';
+import type { QueuedJob, QueueState, Worker, WorkerInfo, WorkerQueueOptions } from '../worker';
 
 import { InteractsWithConsole } from '@elysiumjs/core';
 import { sort, uid } from 'radash';
 
-import { TransportMode } from '../transport';
+import { JobStatus } from '../job';
 import { WorkerStatus } from '../worker';
 
 /**
  * Base class for workers that manages multiple job queues and processes them in parallel.
  * Each queue processes its jobs sequentially by default, but can be configured for concurrency.
  * @author Axel Nana <axel.nana@workbud.com>
+ *
+ * @template TTransport The type of transport used by the worker.
  */
-export abstract class BaseWorker extends InteractsWithConsole implements Worker {
+export abstract class BaseWorker<TTransport extends Transport>
+	extends InteractsWithConsole
+	implements Worker
+{
 	/**
 	 * The worker ID.
 	 */
 	readonly #id: string;
+
+	/**
+	 * Transport instance used for Redis communication
+	 */
+	protected transport: TTransport = null!;
 
 	/**
 	 * The queues managed by this worker.
@@ -60,14 +70,14 @@ export abstract class BaseWorker extends InteractsWithConsole implements Worker 
 	protected startedAt: Date = new Date();
 
 	/**
-	 * Timer for checking scheduled jobs.
-	 */
-	private scheduledJobTimer?: NodeJS.Timeout;
-
-	/**
 	 * Interval in milliseconds to check for scheduled jobs.
 	 */
 	protected scheduledJobInterval: number = 1000;
+
+	/**
+	 * Timer for checking scheduled jobs.
+	 */
+	private scheduledJobTimer?: NodeJS.Timeout;
 
 	constructor(id?: string) {
 		super();
@@ -99,7 +109,7 @@ export abstract class BaseWorker extends InteractsWithConsole implements Worker 
 	 * @param options The queue configuration options.
 	 * @returns The Worker instance for method chaining.
 	 */
-	public async createQueue(options: QueueOptions): Promise<Worker> {
+	public async createQueue(options: WorkerQueueOptions): Promise<Worker> {
 		if (this.queues.has(options.name)) {
 			this.debug(`Queue with name '${options.name}' already exists`);
 			return this;
@@ -117,19 +127,11 @@ export abstract class BaseWorker extends InteractsWithConsole implements Worker 
 			activeJobs: new Map(),
 			processing: 0,
 			paused: false,
-			draining: false,
-			transport: options.transport
-				? new options.transport(TransportMode.CONSUMER, options.transportOptions)
-				: undefined
+			draining: false
 		};
 
 		this.queues.set(options.name, queueState);
 		this.debug(`Created queue '${options.name}'`);
-
-		// If the queue has its own transport, start it
-		if (queueState.transport) {
-			await queueState.transport.start();
-		}
 
 		return this;
 	}
@@ -632,13 +634,6 @@ export abstract class BaseWorker extends InteractsWithConsole implements Worker 
 			await this.defaultTransport.stop();
 		}
 
-		// Stop any queue-specific transports
-		for (const queue of this.queues.values()) {
-			if (queue.transport) {
-				await queue.transport.stop();
-			}
-		}
-
 		this.workerStatus = WorkerStatus.STOPPED;
 		this.info(`Worker ${this.id} stopped`);
 	}
@@ -759,6 +754,41 @@ export abstract class BaseWorker extends InteractsWithConsole implements Worker 
 		if (states.some((q) => q.jobs.length > 0)) {
 			await Bun.sleep(10);
 			setImmediate(() => this.processQueueJobs(queueName));
+		}
+	}
+
+	/**
+	 * Send job status update
+	 * @param jobId Job ID
+	 * @param queue Queue name
+	 * @param status Job status
+	 * @param error Optional error message
+	 */
+	protected async sendJobStatusUpdate(
+		jobId: string,
+		dispatchId: string,
+		queue: string,
+		status: JobStatus,
+		error?: string
+	): Promise<void> {
+		try {
+			// Direct call to updateJobStatus (required by Transport interface)
+			await this.transport.updateJobStatus(jobId, dispatchId, queue, {
+				dispatchId,
+				status,
+				error,
+				retries: 0,
+				startedAt: status === JobStatus.RUNNING ? new Date().toISOString() : undefined,
+				completedAt:
+					status === JobStatus.COMPLETED ||
+					status === JobStatus.FAILED ||
+					status === JobStatus.CANCELLED
+						? new Date().toISOString()
+						: undefined,
+				updatedAt: Date.now().toString()
+			});
+		} catch (error) {
+			this.error(`Error sending job status update: ${error}`);
 		}
 	}
 

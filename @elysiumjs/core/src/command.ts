@@ -109,7 +109,7 @@ type CommandArgumentMetadata = CommandArgumentProps & {
  * Type for a command class.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export type CommandClass = Class<Command> & {
+export type CommandClass<T extends Command = Command> = Class<T> & {
 	/**
 	 * The name of the command.
 	 */

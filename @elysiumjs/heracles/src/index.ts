@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type { JobProps } from './job';
-export type { JobDispatchOptions, QueueOptions } from './queue';
+import '@elysiumjs/core';
+
+export type { JobProps, JobClass, JobMetadata } from './job';
+export type { JobDispatchOptions, QueueOptions, JobDispatchId } from './queue';
 export type { JobStatusInfo, Transport, TransportClass, TransportEvent } from './transport';
-export type { QueuedJob, QueueState, Worker, WorkerInfo } from './worker';
+export type { QueuedJob, QueueState, Worker, WorkerInfo, WorkerQueueOptions } from './worker';
 export type { RedisTransportOptions } from './transports/redis.transport';
 
 export { Heracles } from './heracles';
-export { Job, JobStatus } from './job';
+export { Job, JobStatus, JobOverlapBehavior } from './job';
 export { Queue } from './queue';
 export { TransportMode } from './transport';
 export { RedisTransport } from './transports/redis.transport';

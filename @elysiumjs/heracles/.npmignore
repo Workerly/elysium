@@ -1,10 +1,10 @@
 .git
-coverage
-tests
-node_modules
 .yalc
+coverage
+node_modules
+src
+tests
 examples
-bin
 
 .gitignore
 .prettierignore

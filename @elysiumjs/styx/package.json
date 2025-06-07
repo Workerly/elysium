@@ -12,7 +12,7 @@
 	"homepage": "https://github.com/workbud/elysium",
 	"scripts": {
 		"format": "prettier --write \"./src/**/*.ts\"",
-		"build": "bun build ./src/styx.ts --outdir=./ --root ./src --target bun --minify -e @elysiumjs/core -e reflect-metadata",
+		"build": "bun build ./src/styx.ts --outdir=./ --root ./src --target bun --minify -e @elysiumjs/* -e reflect-metadata",
 		"prepublishOnly": "bun run build"
 	},
 	"keywords": [
@@ -39,7 +39,7 @@
 	},
 	"peerDependencies": {
 		"@elysiumjs/core": "latest",
-		"@elysiumjs/heracles": "^0.4.4",
+		"@elysiumjs/heracles": "latest",
 		"typescript": "^5.8.3"
 	}
 }

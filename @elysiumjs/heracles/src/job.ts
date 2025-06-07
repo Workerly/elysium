@@ -62,12 +62,26 @@ export interface JobMetadata {
 	 * When using NO_OVERLAP behavior, specifies the delay in milliseconds
 	 * between sequential executions of jobs with the same ID.
 	 */
-	overlapDelay?: number;
+	overlapDelay: number;
 
 	/**
-	 * Additional job options.
+	 * Priority of this job (lower number = higher priority).
 	 */
-	options?: Record<string, any>;
+	priority: number;
+
+	/**
+	 * The maximum number of retries for this job type.
+	 * This overrides queue-level retry settings.
+	 * @default undefined - Uses queue setting
+	 */
+	maxRetries?: number;
+
+	/**
+	 * The delay between retries in milliseconds.
+	 * This overrides queue-level retry delay settings.
+	 * @default undefined - Uses queue setting
+	 */
+	retryDelay?: number;
 }
 
 /**
@@ -84,6 +98,12 @@ export type JobProps = {
 	 * The queue on which the job should be processed.
 	 */
 	queue?: string;
+
+	/**
+	 * Priority of this job (lower number = higher priority).
+	 * @default 0
+	 */
+	priority?: number;
 
 	/**
 	 * The maximum number of retries for this job type.
@@ -111,11 +131,6 @@ export type JobProps = {
 	 * @default 0
 	 */
 	overlapDelay?: number;
-
-	/**
-	 * Additional job-specific configuration options.
-	 */
-	options?: Record<string, any>;
 };
 
 /**
@@ -159,12 +174,13 @@ export abstract class Job extends InteractsWithConsole {
 					name: target.name,
 					queue: 'default',
 					overlapBehavior: JobOverlapBehavior.ALLOW_OVERLAP,
-					overlapDelay: 0
+					overlapDelay: 0,
+					priority: 0
 				},
 				options
 			);
 
-			const name = `job.${options.name}`;
+			const name = `elysium.heracles.job.${options.name}`;
 
 			// Register job class as a service
 			Service.instance(name, target);
@@ -174,12 +190,10 @@ export abstract class Job extends InteractsWithConsole {
 				name,
 				queue: options.queue!,
 				overlapBehavior: options.overlapBehavior!,
-				overlapDelay: options.overlapDelay,
-				options: {
-					maxRetries: options.maxRetries,
-					retryDelay: options.retryDelay,
-					...options.options
-				}
+				overlapDelay: options.overlapDelay!,
+				priority: options.priority!,
+				maxRetries: options.maxRetries,
+				retryDelay: options.retryDelay
 			};
 
 			Reflect.defineMetadata(Symbols.job, metadata, target);
@@ -191,7 +205,7 @@ export abstract class Job extends InteractsWithConsole {
 	 * @param args Arguments passed to the constructor.
 	 * @returns A random job ID.
 	 */
-	public static generateJobId(...args: any[]): string {
+	public static generateJobId(..._args: any[]): string {
 		return `job_${Date.now()}_${uid(8)}`;
 	}
 

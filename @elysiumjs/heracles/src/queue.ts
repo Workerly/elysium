@@ -21,7 +21,6 @@ import { map, uid } from 'radash';
 
 import { Job, JobStatus } from './job';
 import { TransportMode } from './transport';
-import { ThreadTransport } from './transports/thread.transport';
 
 /**
  * Options for dispatching a job to a queue.
@@ -90,7 +89,7 @@ export type QueueOptions = {
 	/**
 	 * The transport class to use for this queue.
 	 */
-	transport?: TransportClass;
+	transport: TransportClass;
 
 	/**
 	 * The maximum number of concurrent jobs to process in this queue.
@@ -169,9 +168,9 @@ export class Queue extends InteractsWithConsole {
 		if (!this.queues.has(name)) {
 			const queue = new Queue({
 				name,
-				...config,
-				transport: config?.transport ?? ThreadTransport
+				...config!
 			});
+
 			this.queues.set(name, queue);
 		}
 
@@ -222,7 +221,7 @@ export class Queue extends InteractsWithConsole {
 	 *
 	 * @param config The queue configuration.
 	 */
-	constructor(config: QueueOptions) {
+	private constructor(config: QueueOptions) {
 		super();
 
 		this.name = config.name;
@@ -239,10 +238,7 @@ export class Queue extends InteractsWithConsole {
 		};
 
 		// Initialize the transport
-		this.transport = new (this.transportClass ?? ThreadTransport)(
-			TransportMode.PRODUCER,
-			this.transportOptions
-		);
+		this.transport = new this.transportClass(TransportMode.PRODUCER, this.transportOptions);
 
 		// Register message handler for job status updates
 		this.transport.onMessage(this.handleTransportMessage.bind(this));
