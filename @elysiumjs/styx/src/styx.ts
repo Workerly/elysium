@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import 'reflect-metadata';
+import '@elysiumjs/core';
 
 import {
 	MakeCommandCommand,
@@ -47,7 +48,7 @@ const { App } = await import(`${projectPath}/src/app`);
 		MigrationRunCommand,
 		ModuleNewCommand,
 		ModuleRenameCommand
-	]
+	].filter((command) => (ELYSIUM_BUILD && !command.dev) || true)
 })
 class StyxApp extends App {}
 
