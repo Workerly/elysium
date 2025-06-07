@@ -32,13 +32,14 @@
 		"@types/bun": "latest",
 		"@types/prompts": "^2.4.9",
 		"@types/string-template": "^1.0.6",
-		"type-fest": "^4.41.0",
 		"prompts": "^2.4.2",
 		"radash": "^12.1.0",
-		"string-template": "^1.0.0"
+		"string-template": "^1.0.0",
+		"type-fest": "^4.41.0"
 	},
 	"peerDependencies": {
 		"@elysiumjs/core": "latest",
+		"@elysiumjs/heracles": "^0.4.4",
 		"typescript": "^5.8.3"
 	}
 }

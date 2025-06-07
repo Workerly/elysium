@@ -16,6 +16,7 @@ import 'reflect-metadata';
 import '@elysiumjs/core';
 
 import {
+	HeraclesWorkCommand,
 	MakeCommandCommand,
 	MakeControllerCommand,
 	MakeJobCommand,
@@ -36,6 +37,7 @@ const { App } = await import(`${projectPath}/src/app`);
 
 @App.register({
 	commands: [
+		HeraclesWorkCommand,
 		MakeCommandCommand,
 		MakeControllerCommand,
 		MakeJobCommand,

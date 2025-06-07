@@ -1,8 +1,9 @@
 .git
-coverage
-tests
-node_modules
 .yalc
+coverage
+node_modules
+src
+tests
 
 .gitignore
 .prettierignore
