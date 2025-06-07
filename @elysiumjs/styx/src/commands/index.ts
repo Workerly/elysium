@@ -14,6 +14,7 @@
 
 export * from './base.command';
 
+export * from './heracles_clean.command';
 export * from './heracles_work.command';
 
 export * from './make_command.command';

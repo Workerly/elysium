@@ -23,7 +23,7 @@ import { BaseCommand } from './base.command';
  */
 export class HeraclesWorkCommand extends BaseCommand {
 	public static readonly command: string = 'heracles:work';
-	public static readonly description: string = 'Start an Heracles worker';
+	public static readonly description: string = 'Start an Heracles worker for specific queues.';
 	public static readonly dev: boolean = false;
 
 	@Command.arg({
@@ -98,7 +98,7 @@ export class HeraclesWorkCommand extends BaseCommand {
 	})
 	private verbose: boolean = false;
 
-	async run(): Promise<void> {
+	public async run(): Promise<void> {
 		if (this.verbose) {
 			this.write(
 				`Starting Heracles worker with id ${this.id} for queues ${this.queues.join(', ')}`
