@@ -23,12 +23,13 @@ import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
  * Maker class for creating Elysium.js controllers.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MakeControllerCommand extends Command {
+export class MakeControllerCommand extends BaseCommand {
 	public static readonly command: string = 'make:controller';
 	public static readonly description: string = 'Creates a new controller.';
 

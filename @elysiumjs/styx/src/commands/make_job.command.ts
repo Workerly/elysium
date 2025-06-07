@@ -23,26 +23,40 @@ import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
- * Maker command for creating Elysium validators.
+ * Maker class for creating Elysium.js jobs.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MakeValidatorCommand extends Command {
-	public static readonly command: string = 'make:validator';
-	public static readonly description: string = 'Creates a new validator.';
+export class MakeJobCommand extends BaseCommand {
+	public static readonly command: string = 'make:job';
+	public static readonly description: string = 'Creates a new job.';
 
 	@Command.arg({
-		description: 'The name of the validator to create',
+		description: 'The name of the job to create',
 		type: CommandArgumentType.STRING
 	})
 	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the validator will be created',
+		description: 'The module where the job will be created',
 		type: CommandArgumentType.STRING
 	})
 	private module?: string;
+
+	@Command.arg({
+		description: 'The alias of the job to create',
+		type: CommandArgumentType.STRING
+	})
+	private alias?: string;
+
+	@Command.arg({
+		description: 'The name of the queue where the job will be dispatched',
+		type: CommandArgumentType.STRING,
+		default: 'default'
+	})
+	private queue: string = 'default';
 
 	public async run(): Promise<void> {
 		if (!this.name) {
@@ -53,7 +67,9 @@ export class MakeValidatorCommand extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
-			name: this.name
+			name: this.name,
+			alias: this.alias,
+			queue: this.queue ?? 'default'
 		};
 
 		if (!answers.module && !config.mono) {
@@ -93,15 +109,36 @@ export class MakeValidatorCommand extends Command {
 			{
 				type: 'text',
 				name: 'name',
-				message: 'Validator Name:',
-				initial: 'LoginValidator',
+				message: 'Job Name:',
+				initial: 'SendEmailJob',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Validator name cannot be empty';
+						return 'Job name cannot be empty';
 					}
 
 					return true;
 				}
+			},
+			{
+				type: 'text',
+				name: 'alias',
+				message: 'Job Alias:',
+				initial(_, values) {
+					return values.name;
+				},
+				validate(value: string) {
+					if (value.length < 1) {
+						return 'Job alias cannot be empty';
+					}
+
+					return true;
+				}
+			},
+			{
+				type: 'text',
+				name: 'queue',
+				message: 'Job Queue:',
+				initial: 'default'
 			}
 		];
 
@@ -121,16 +158,16 @@ export class MakeValidatorCommand extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Validator')) {
-			answers.name += 'Validator';
+		if (!answers.name.endsWith('Job')) {
+			answers.name += 'Job';
 		}
 
-		if (!answers.request_name) {
-			answers.request_name = answers.name.replace('Validator', 'Request');
+		if (!answers.alias) {
+			answers.alias = answers.name;
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/validator.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/job.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -138,10 +175,10 @@ export class MakeValidatorCommand extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Validator', ''));
-		const file = Bun.file(`${path}/validators/${name}.validator.ts`);
+		const name = snake(answers.name.replace('Job', ''));
+		const file = Bun.file(`${path}/jobs/${name}.job.ts`);
 		await file.write(stub);
 
-		this.success(`Validator ${this.bold(file.name!)} created successfully.`);
+		this.success(`Job ${this.bold(file.name!)} created successfully.`);
 	}
 }

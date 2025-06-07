@@ -12,20 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export * from './base.command';
+import { Command } from '@elysiumjs/core';
 
-
-export * from './make_command.command';
-export * from './make_controller.command';
-export * from './make_job.command';
-export * from './make_middleware.command';
-export * from './make_model.command';
-export * from './make_repository.command';
-export * from './make_service.command';
-export * from './make_validator.command';
-
-export * from './migration_generate.command';
-export * from './migration_run.command';
-
-export * from './module_new.command';
-export * from './module_rename.command';
+/**
+ * Base class for Styx commands.
+ * @author Axel Nana <axel.nana@workbud.com>
+ */
+export abstract class BaseCommand extends Command {
+	/**
+	 * Whether the command is only available in development mode.
+	 * This means the command will not be bundled in the production build
+	 * of the application (when using Hephaestus).
+	 */
+	public static readonly dev: boolean = true;
+}

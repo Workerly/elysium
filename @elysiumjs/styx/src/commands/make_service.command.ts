@@ -23,48 +23,43 @@ import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
- * Maker command for creating Elysium repositories.
+ * Maker command for creating Elysium services.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MakeRepositoryCommand extends Command {
-	public static readonly command: string = 'make:repository';
-	public static readonly description: string = 'Creates a new repository.';
+export class MakeServiceCommand extends BaseCommand {
+	public static readonly command: string = 'make:service';
+	public static readonly description: string = 'Creates a new service.';
 
 	@Command.arg({
-		description: 'The name of the repository to create',
+		description: 'The name of the service to create',
 		type: CommandArgumentType.STRING
 	})
 	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the repository will be created',
+		description: 'The module where the service will be created',
 		type: CommandArgumentType.STRING
 	})
 	private module?: string;
 
 	@Command.arg({
-		description: 'The alias of the repository to create',
+		description: 'The alias of the service to create',
 		type: CommandArgumentType.STRING
 	})
 	private alias?: string;
 
 	@Command.arg({
-		description: 'The model used by the repository',
-		type: CommandArgumentType.STRING
-	})
-	private model?: string;
-
-	@Command.arg({
-		description: 'Create a factory repository',
+		description: 'Create a factory service',
 		type: CommandArgumentType.BOOLEAN,
 		default: false
 	})
 	private factory: boolean = false;
 
 	@Command.arg({
-		description: 'Create a singleton repository',
+		description: 'Create a singleton service',
 		type: CommandArgumentType.BOOLEAN,
 		default: false
 	})
@@ -81,8 +76,7 @@ export class MakeRepositoryCommand extends Command {
 			module: this.module,
 			name: this.name,
 			alias: this.alias,
-			scope: this.factory ? 'FACTORY' : this.singleton ? 'SINGLETON' : 'SINGLETON',
-			model: this.model
+			scope: this.factory ? 'FACTORY' : this.singleton ? 'SINGLETON' : 'SINGLETON'
 		};
 
 		if (!answers.module && !config.mono) {
@@ -122,24 +116,11 @@ export class MakeRepositoryCommand extends Command {
 			{
 				type: 'text',
 				name: 'name',
-				message: 'Repository Name:',
-				initial: 'UserRepository',
+				message: 'Service Name:',
+				initial: 'UserService',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Repository name cannot be empty';
-					}
-
-					return true;
-				}
-			},
-			{
-				type: 'text',
-				name: 'model',
-				message: 'Model Name:',
-				initial: 'UserModel',
-				validate(value: string) {
-					if (value.length < 1) {
-						return 'Model name cannot be empty';
+						return 'Service name cannot be empty';
 					}
 
 					return true;
@@ -148,13 +129,13 @@ export class MakeRepositoryCommand extends Command {
 			{
 				type: 'text',
 				name: 'alias',
-				message: 'Repository Alias:',
+				message: 'Service Alias:',
 				initial(_, values) {
 					return values.name;
 				},
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Repository alias cannot be empty';
+						return 'Service alias cannot be empty';
 					}
 
 					return true;
@@ -163,17 +144,17 @@ export class MakeRepositoryCommand extends Command {
 			{
 				type: 'select',
 				name: 'scope',
-				message: 'Repository Scope:',
+				message: 'Service Scope:',
 				choices: [
 					{
 						title: 'SINGLETON',
 						value: 'SINGLETON',
-						description: 'A single instance of the repository is created.'
+						description: 'A single instance of the service is created.'
 					},
 					{
 						title: 'FACTORY',
 						value: 'FACTORY',
-						description: 'A new instance of the repository is created each time it is injected.'
+						description: 'A new instance of the service is created each time it is injected.'
 					}
 				]
 			}
@@ -195,8 +176,8 @@ export class MakeRepositoryCommand extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Repository')) {
-			answers.name += 'Repository';
+		if (!answers.name.endsWith('Service')) {
+			answers.name += 'Service';
 		}
 
 		if (!answers.alias) {
@@ -204,22 +185,18 @@ export class MakeRepositoryCommand extends Command {
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/repository.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/service.stub'));
 
 		// Format the stub content
-		const stub = formatter(await stubFile.text(), {
-			...answers,
-			module: answers.module ?? 'root',
-			model_name: snake(answers.model.replace('Model', ''))
-		});
+		const stub = formatter(await stubFile.text(), answers);
 
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Repository', ''));
-		const file = Bun.file(`${path}/repositories/${name}.repository.ts`);
+		const name = snake(answers.name.replace('Service', ''));
+		const file = Bun.file(`${path}/services/${name}.service.ts`);
 		await file.write(stub);
 
-		this.success(`Repository ${this.bold(file.name!)} created successfully.`);
+		this.success(`Service ${this.bold(file.name!)} created successfully.`);
 	}
 }

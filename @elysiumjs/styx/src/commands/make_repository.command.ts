@@ -23,26 +23,53 @@ import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
- * Maker class for creating Elysium.js middlewares.
+ * Maker command for creating Elysium repositories.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MakeMiddlewareCommand extends Command {
-	public static readonly command: string = 'make:middleware';
-	public static readonly description: string = 'Creates a new middleware.';
+export class MakeRepositoryCommand extends BaseCommand {
+	public static readonly command: string = 'make:repository';
+	public static readonly description: string = 'Creates a new repository.';
 
 	@Command.arg({
-		description: 'The name of the middleware to create',
+		description: 'The name of the repository to create',
 		type: CommandArgumentType.STRING
 	})
 	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the middleware will be created',
+		description: 'The module where the repository will be created',
 		type: CommandArgumentType.STRING
 	})
 	private module?: string;
+
+	@Command.arg({
+		description: 'The alias of the repository to create',
+		type: CommandArgumentType.STRING
+	})
+	private alias?: string;
+
+	@Command.arg({
+		description: 'The model used by the repository',
+		type: CommandArgumentType.STRING
+	})
+	private model?: string;
+
+	@Command.arg({
+		description: 'Create a factory repository',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private factory: boolean = false;
+
+	@Command.arg({
+		description: 'Create a singleton repository',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
+	})
+	private singleton: boolean = false;
 
 	public async run(): Promise<void> {
 		if (!this.name) {
@@ -53,7 +80,10 @@ export class MakeMiddlewareCommand extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
-			name: this.name
+			name: this.name,
+			alias: this.alias,
+			scope: this.factory ? 'FACTORY' : this.singleton ? 'SINGLETON' : 'SINGLETON',
+			model: this.model
 		};
 
 		if (!answers.module && !config.mono) {
@@ -93,15 +123,60 @@ export class MakeMiddlewareCommand extends Command {
 			{
 				type: 'text',
 				name: 'name',
-				message: 'Middleware Name:',
-				initial: 'AuthMiddleware',
+				message: 'Repository Name:',
+				initial: 'UserRepository',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Middleware name cannot be empty';
+						return 'Repository name cannot be empty';
 					}
 
 					return true;
 				}
+			},
+			{
+				type: 'text',
+				name: 'model',
+				message: 'Model Name:',
+				initial: 'UserModel',
+				validate(value: string) {
+					if (value.length < 1) {
+						return 'Model name cannot be empty';
+					}
+
+					return true;
+				}
+			},
+			{
+				type: 'text',
+				name: 'alias',
+				message: 'Repository Alias:',
+				initial(_, values) {
+					return values.name;
+				},
+				validate(value: string) {
+					if (value.length < 1) {
+						return 'Repository alias cannot be empty';
+					}
+
+					return true;
+				}
+			},
+			{
+				type: 'select',
+				name: 'scope',
+				message: 'Repository Scope:',
+				choices: [
+					{
+						title: 'SINGLETON',
+						value: 'SINGLETON',
+						description: 'A single instance of the repository is created.'
+					},
+					{
+						title: 'FACTORY',
+						value: 'FACTORY',
+						description: 'A new instance of the repository is created each time it is injected.'
+					}
+				]
 			}
 		];
 
@@ -121,23 +196,31 @@ export class MakeMiddlewareCommand extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Middleware')) {
-			answers.name += 'Middleware';
+		if (!answers.name.endsWith('Repository')) {
+			answers.name += 'Repository';
+		}
+
+		if (!answers.alias) {
+			answers.alias = answers.name;
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/middleware.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/repository.stub'));
 
 		// Format the stub content
-		const stub = formatter(await stubFile.text(), answers);
+		const stub = formatter(await stubFile.text(), {
+			...answers,
+			module: answers.module ?? 'root',
+			model_name: snake(answers.model.replace('Model', ''))
+		});
 
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Middleware', ''));
-		const file = Bun.file(`${path}/middlewares/${name}.middleware.ts`);
+		const name = snake(answers.name.replace('Repository', ''));
+		const file = Bun.file(`${path}/repositories/${name}.repository.ts`);
 		await file.write(stub);
 
-		this.success(`Middleware ${this.bold(file.name!)} created successfully.`);
+		this.success(`Repository ${this.bold(file.name!)} created successfully.`);
 	}
 }

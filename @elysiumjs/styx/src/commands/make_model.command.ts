@@ -18,46 +18,50 @@ import { join } from 'node:path';
 
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { pascal, snake } from 'radash';
+import { pascal, snake, trim } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
- * Maker class for creating Elysium.js commands.
+ * Maker command for creating Elysium.js models.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MakeCommandCommand extends Command {
-	public static readonly command: string = 'make:command';
-	public static readonly description: string = 'Creates a new command.';
+export class MakeModelCommand extends BaseCommand {
+	public static readonly command: string = 'make:model';
+	public static readonly description: string = 'Creates a new model.';
 
 	@Command.arg({
-		description: 'The name of the command to create',
+		description: 'The name of the model to create',
 		type: CommandArgumentType.STRING
 	})
 	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the command will be created',
+		description: 'The module where the model will be created',
 		type: CommandArgumentType.STRING
 	})
 	private module?: string;
 
 	@Command.arg({
-		description: 'The command to create',
+		name: 'table',
+		description: 'The name of the table wrapped by the model',
 		type: CommandArgumentType.STRING
 	})
-	private command?: string;
+	private tableName?: string;
 
 	@Command.arg({
-		description: 'The description of the command',
-		type: CommandArgumentType.STRING
+		name: 'support-tenancy',
+		description: 'Support tenancy',
+		type: CommandArgumentType.BOOLEAN,
+		default: false
 	})
-	private description?: string;
+	private supportTenancy: boolean = false;
 
 	public async run(): Promise<void> {
-		if (!this.command || !this.name) {
+		if (!this.name || !this.tableName) {
 			return this.setup();
 		}
 
@@ -65,24 +69,35 @@ export class MakeCommandCommand extends Command {
 
 		const answers: Record<string, any> = {
 			module: this.module,
+			table: this.tableName,
 			name: this.name,
-			command: this.command,
-			description: this.description
+			supportTenancy: this.supportTenancy
 		};
 
 		if (!answers.module && !config.mono) {
-			const module = await prompts({
-				type: 'select',
-				name: 'module',
-				message: 'Module:',
-				choices: Object.keys(config.modules ?? {}).map((moduleName) => ({
-					title: moduleName,
-					value: moduleName
-				}))
-			});
+			const module = await prompts(
+				{
+					type: 'select',
+					name: 'module',
+					message: 'Module:',
+					choices: Object.keys(config.modules ?? {}).map((moduleName) => ({
+						title: moduleName,
+						value: moduleName
+					}))
+				},
+				{
+					onCancel: () => process.exit(1)
+				}
+			);
 
 			answers.module = module.module;
 		}
+
+		if (!answers.name) {
+			answers.name = trim(pascal(answers.table), 's');
+		}
+
+		answers.canonicalName = answers.name;
 
 		return this.build(answers);
 	}
@@ -106,12 +121,12 @@ export class MakeCommandCommand extends Command {
 			},
 			{
 				type: 'text',
-				name: 'command',
-				message: 'Command Name:',
-				initial: 'user:say',
+				name: 'table',
+				message: 'Table Name:',
+				initial: 'users',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Command name cannot be empty';
+						return 'Table name cannot be empty';
 					}
 
 					return true;
@@ -119,16 +134,35 @@ export class MakeCommandCommand extends Command {
 			},
 			{
 				type: 'text',
-				name: 'description',
-				message: 'Command Description:',
-				initial: 'Say something',
+				name: 'name',
+				message: 'Model Name:',
+				initial(_, values) {
+					return trim(pascal(values.table), 's');
+				},
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Command description cannot be empty';
+						return 'Model name cannot be empty';
 					}
 
 					return true;
 				}
+			},
+			{
+				type: 'select',
+				name: 'supportTenancy',
+				message: 'Support Tenancy:',
+				choices: [
+					{
+						title: 'Yes',
+						value: true,
+						description: 'The model supports multi-tenancy.'
+					},
+					{
+						title: 'No',
+						value: false,
+						description: 'The model does not support multi-tenancy.'
+					}
+				]
 			}
 		];
 
@@ -139,8 +173,6 @@ export class MakeCommandCommand extends Command {
 			}
 		});
 
-		answers.name = pascal(answers.command.replaceAll(':', '_'));
-
 		return this.build(answers);
 	}
 
@@ -150,12 +182,14 @@ export class MakeCommandCommand extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Command')) {
-			answers.name += 'Command';
+		if (!answers.name.endsWith('Model')) {
+			answers.name += 'Model';
 		}
 
+		answers.canonicalName = answers.name.replace('Model', '');
+
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/command.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/model.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -163,10 +197,10 @@ export class MakeCommandCommand extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Command', ''));
-		const file = Bun.file(`${path}/commands/${name}.command.ts`);
+		const name = snake(answers.name.replace('Model', ''));
+		const file = Bun.file(`${path}/models/${name}.model.ts`);
 		await file.write(stub);
 
-		this.success(`Command ${this.bold(file.name!)} created successfully.`);
+		this.success(`Model ${this.bold(file.name!)} created successfully.`);
 	}
 }

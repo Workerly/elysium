@@ -18,12 +18,13 @@ import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
 
 import { getProjectPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
  * Generates migration files.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MigrationGenerateCommand extends Command {
+export class MigrationGenerateCommand extends BaseCommand {
 	public static readonly command: string = 'migration:generate';
 	public static readonly description: string = 'Generates migration files.';
 

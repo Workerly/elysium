@@ -18,54 +18,47 @@ import { join } from 'node:path';
 
 import { Command, CommandArgumentType } from '@elysiumjs/core';
 import prompts from 'prompts';
-import { snake } from 'radash';
+import { pascal, snake } from 'radash';
 import formatter from 'string-template';
 
 import { getModulePath, parseProjectConfig } from '../config';
 import { getRootPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
- * Maker command for creating Elysium services.
+ * Maker class for creating Elysium.js commands.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MakeServiceCommand extends Command {
-	public static readonly command: string = 'make:service';
-	public static readonly description: string = 'Creates a new service.';
+export class MakeCommandCommand extends BaseCommand {
+	public static readonly command: string = 'make:command';
+	public static readonly description: string = 'Creates a new command.';
 
 	@Command.arg({
-		description: 'The name of the service to create',
+		description: 'The name of the command to create',
 		type: CommandArgumentType.STRING
 	})
 	private name?: string;
 
 	@Command.arg({
-		description: 'The module where the service will be created',
+		description: 'The module where the command will be created',
 		type: CommandArgumentType.STRING
 	})
 	private module?: string;
 
 	@Command.arg({
-		description: 'The alias of the service to create',
+		description: 'The command to create',
 		type: CommandArgumentType.STRING
 	})
-	private alias?: string;
+	private command?: string;
 
 	@Command.arg({
-		description: 'Create a factory service',
-		type: CommandArgumentType.BOOLEAN,
-		default: false
+		description: 'The description of the command',
+		type: CommandArgumentType.STRING
 	})
-	private factory: boolean = false;
-
-	@Command.arg({
-		description: 'Create a singleton service',
-		type: CommandArgumentType.BOOLEAN,
-		default: false
-	})
-	private singleton: boolean = false;
+	private description?: string;
 
 	public async run(): Promise<void> {
-		if (!this.name) {
+		if (!this.command || !this.name) {
 			return this.setup();
 		}
 
@@ -74,8 +67,8 @@ export class MakeServiceCommand extends Command {
 		const answers: Record<string, any> = {
 			module: this.module,
 			name: this.name,
-			alias: this.alias,
-			scope: this.factory ? 'FACTORY' : this.singleton ? 'SINGLETON' : 'SINGLETON'
+			command: this.command,
+			description: this.description
 		};
 
 		if (!answers.module && !config.mono) {
@@ -114,12 +107,12 @@ export class MakeServiceCommand extends Command {
 			},
 			{
 				type: 'text',
-				name: 'name',
-				message: 'Service Name:',
-				initial: 'UserService',
+				name: 'command',
+				message: 'Command Name:',
+				initial: 'user:say',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Service name cannot be empty';
+						return 'Command name cannot be empty';
 					}
 
 					return true;
@@ -127,35 +120,16 @@ export class MakeServiceCommand extends Command {
 			},
 			{
 				type: 'text',
-				name: 'alias',
-				message: 'Service Alias:',
-				initial(_, values) {
-					return values.name;
-				},
+				name: 'description',
+				message: 'Command Description:',
+				initial: 'Say something',
 				validate(value: string) {
 					if (value.length < 1) {
-						return 'Service alias cannot be empty';
+						return 'Command description cannot be empty';
 					}
 
 					return true;
 				}
-			},
-			{
-				type: 'select',
-				name: 'scope',
-				message: 'Service Scope:',
-				choices: [
-					{
-						title: 'SINGLETON',
-						value: 'SINGLETON',
-						description: 'A single instance of the service is created.'
-					},
-					{
-						title: 'FACTORY',
-						value: 'FACTORY',
-						description: 'A new instance of the service is created each time it is injected.'
-					}
-				]
 			}
 		];
 
@@ -166,6 +140,8 @@ export class MakeServiceCommand extends Command {
 			}
 		});
 
+		answers.name = pascal(answers.command.replaceAll(':', '_'));
+
 		return this.build(answers);
 	}
 
@@ -175,16 +151,12 @@ export class MakeServiceCommand extends Command {
 			return;
 		}
 
-		if (!answers.name.endsWith('Service')) {
-			answers.name += 'Service';
-		}
-
-		if (!answers.alias) {
-			answers.alias = answers.name;
+		if (!answers.name.endsWith('Command')) {
+			answers.name += 'Command';
 		}
 
 		// Get stub file
-		const stubFile = Bun.file(join(getRootPath(), 'stubs/service.stub'));
+		const stubFile = Bun.file(join(getRootPath(), 'stubs/command.stub'));
 
 		// Format the stub content
 		const stub = formatter(await stubFile.text(), answers);
@@ -192,10 +164,10 @@ export class MakeServiceCommand extends Command {
 		const path = answers.module ? await getModulePath(answers.module) : './src';
 
 		// Write to file
-		const name = snake(answers.name.replace('Service', ''));
-		const file = Bun.file(`${path}/services/${name}.service.ts`);
+		const name = snake(answers.name.replace('Command', ''));
+		const file = Bun.file(`${path}/commands/${name}.command.ts`);
 		await file.write(stub);
 
-		this.success(`Service ${this.bold(file.name!)} created successfully.`);
+		this.success(`Command ${this.bold(file.name!)} created successfully.`);
 	}
 }

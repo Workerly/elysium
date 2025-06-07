@@ -18,11 +18,13 @@ import { Command, CommandArgumentType, Database } from '@elysiumjs/core';
 import prompts from 'prompts';
 import { alphabetical } from 'radash';
 
+import { BaseCommand } from './base.command';
+
 /**
  * Execute migration files.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class MigrationRunCommand extends Command {
+export class MigrationRunCommand extends BaseCommand {
 	public static readonly command: string = 'migration:run';
 	public static readonly description: string = 'Generates migration files.';
 

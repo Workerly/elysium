@@ -21,12 +21,13 @@ import { snake } from 'radash';
 
 import { parseProjectConfig } from '../config';
 import { createModule, getProjectPath } from '../utils';
+import { BaseCommand } from './base.command';
 
 /**
  * Command for creating Elysium.js modules.
  * @author Axel Nana <axel.nana@workbud.com>
  */
-export class ModuleNewCommand extends Command {
+export class ModuleNewCommand extends BaseCommand {
 	public static readonly command: string = 'module:new';
 	public static readonly description: string = 'Creates a new module.';
 
