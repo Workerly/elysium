@@ -54,7 +54,7 @@ const { App } = await import(`${projectPath}/src/app`);
 		MigrationRunCommand,
 		ModuleNewCommand,
 		ModuleRenameCommand
-	].filter((command) => (ELYSIUM_BUILD && !command.dev) || true)
+	].filter((command) => (ELYSIUM_BUILD ? !command.dev : true))
 })
 class StyxApp extends App {}
 
