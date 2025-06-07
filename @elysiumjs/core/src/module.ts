@@ -32,6 +32,11 @@ export type ModuleProps = {
 	controllers?: Class<any>[];
 
 	/**
+	 * The list of jobs provided by the module.
+	 */
+	jobs?: Class<any>[];
+
+	/**
 	 * The base path for all the controllers registered by this module.
 	 * This value will be prefixed to each controllers path.
 	 */

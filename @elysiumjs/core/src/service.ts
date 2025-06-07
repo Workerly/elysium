@@ -348,4 +348,24 @@ export namespace Service {
 	export const clear = () => {
 		servicesRegistry.clear();
 	};
+
+	/**
+	 * Returns an array of registered service names matching the given pattern.
+	 * Pattern supports '*' (any sequence) and '?' (any single character), similarly to Redis KEYS.
+	 * @author Axel Nana <axel.nana@workbud.com>
+	 * @param pattern The glob-like pattern to match service names.
+	 * @returns Array of matching service names.
+	 */
+	export const keys = (pattern: string): string[] => {
+		// Escape regex special chars except * and ?
+		const regexPattern =
+			'^' +
+			pattern
+				.replace(/[-[\]{}()+.,\\^$|#\s]/g, '\\$&')
+				.replace(/\*/g, '.*')
+				.replace(/\?/g, '.') +
+			'$';
+		const regex = new RegExp(regexPattern);
+		return Array.from(servicesRegistry.keys()).filter((key) => regex.test(key));
+	};
 }
