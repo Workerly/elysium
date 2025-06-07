@@ -139,6 +139,11 @@ export type JobProps = {
  */
 export type JobClass<T extends Job = Job, TClass extends Class<T> = Class<T>> = {
 	/**
+	 * Description of the job.
+	 */
+	readonly description: string;
+
+	/**
 	 * Generates the ID for instances of this Job.
 	 */
 	generateJobId(...args: ConstructorParameters<TClass>): string;
@@ -208,6 +213,11 @@ export abstract class Job extends InteractsWithConsole {
 	public static generateJobId(..._args: any[]): string {
 		return `job_${Date.now()}_${uid(8)}`;
 	}
+
+	/**
+	 * Description of the job.
+	 */
+	public static readonly description: string = 'An Heracles job.';
 
 	/**
 	 * Unique identifier for the job.

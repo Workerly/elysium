@@ -17,6 +17,7 @@ import '@elysiumjs/core';
 
 import {
 	HeraclesCleanCommand,
+	HeraclesListCommand,
 	HeraclesWorkCommand,
 	MakeCommandCommand,
 	MakeControllerCommand,
@@ -39,6 +40,7 @@ const { App } = await import(`${projectPath}/src/app`);
 @App.register({
 	commands: [
 		HeraclesCleanCommand,
+		HeraclesListCommand,
 		HeraclesWorkCommand,
 		MakeCommandCommand,
 		MakeControllerCommand,
