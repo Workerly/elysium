@@ -13,9 +13,9 @@
 // limitations under the License.
 
 import type { JobClass } from '../job';
-import type { JobDispatchOptions, QueueOptions } from '../queue';
+import type { JobDispatchOptions } from '../queue';
 import type { TransportEvent } from '../transport';
-import type { Worker } from '../worker';
+import type { Worker, WorkerQueueOptions } from '../worker';
 
 import { Service } from '@elysiumjs/core';
 
@@ -349,7 +349,7 @@ export class RedisWorker extends BaseWorker<RedisTransport> {
 	 * Create a new queue with the specified options
 	 * @param options Queue options
 	 */
-	public override async createQueue(options: QueueOptions): Promise<Worker> {
+	public override async createQueue(options: WorkerQueueOptions): Promise<Worker> {
 		const result = await super.createQueue(options);
 
 		// Register the new queue with the transport if worker is running
